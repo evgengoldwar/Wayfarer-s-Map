@@ -24,6 +24,7 @@ import net.minecraft.client.Minecraft;
 import WayFarMap.Config;
 import WayFarMap.WayFarMap;
 import WayFarMap.client.TeamMates;
+import WayFarMap.client.waypoint.TeamWaypoints;
 import WayFarMap.share.ChunkRecord;
 import WayFarMap.share.ShareNetwork;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -42,6 +43,8 @@ import cpw.mods.fml.common.network.simpleimpl.IMessage;
  * chunks of other dimensions go straight into those dimensions' maps, to be looked at from the world map.</li>
  * </ul>
  * Every chunk carries the time it was mapped, so when maps merge the newer chunk wins on both sides.
+ * <p>
+ * The same channel carries the waypoints teammates share: see {@link TeamWaypoints}.
  */
 public final class TeamMapClient {
 
@@ -105,6 +108,7 @@ public final class TeamMapClient {
                 serverShares = false;
                 team = "";
                 TeamMates.INSTANCE.clear();
+                TeamWaypoints.INSTANCE.reset();
                 stopBackfill();
                 inbox.clear();
                 outgoing.clear();
@@ -130,6 +134,8 @@ public final class TeamMapClient {
                 onServerHello((ShareNetwork.Hello) message);
             } else if (message instanceof ShareNetwork.Teammates) {
                 TeamMates.INSTANCE.update(((ShareNetwork.Teammates) message).mates);
+            } else if (message instanceof ShareNetwork.Waypoints) {
+                TeamWaypoints.INSTANCE.receive((ShareNetwork.Waypoints) message);
             } else if (message instanceof ShareNetwork.Chunks && Config.shareMapWithTeam) {
                 ShareNetwork.Chunks chunks = (ShareNetwork.Chunks) message;
                 for (ChunkRecord record : chunks.records) {
@@ -137,6 +143,7 @@ public final class TeamMapClient {
                 }
             }
         }
+        TeamWaypoints.INSTANCE.tick();
         if (backfill == null && isActive()) {
             // Sharing was turned back on, or the world folder is ready now.
             startBackfill();
@@ -180,6 +187,7 @@ public final class TeamMapClient {
             WayFarMap.LOG.info("This server shares the map between team members");
         }
         serverShares = true;
+        TeamWaypoints.INSTANCE.onTeam(hello.protocol >= ShareNetwork.WAYPOINTS_PROTOCOL, hello.team);
         if (!hello.team.equals(team)) {
             team = hello.team;
             TeamMates.INSTANCE.clear();

@@ -61,6 +61,7 @@ import WayFarMap.client.map.Topography;
 import WayFarMap.client.map.export.MapExport;
 import WayFarMap.client.map.iso.IsoMap;
 import WayFarMap.client.map.iso.IsoProjection;
+import WayFarMap.client.waypoint.TeamWaypoints;
 import WayFarMap.client.waypoint.Waypoint;
 import WayFarMap.client.waypoint.WaypointManager;
 import WayFarMap.client.waypoint.WaypointRenderer;
@@ -1300,6 +1301,15 @@ public class GuiWorldMap extends ScaledScreen {
             String where = hoveredWaypoint.x + ", " + hoveredWaypoint.y + ", " + hoveredWaypoint.z;
             String name = hoveredWaypoint.name + "  " + where + WaypointRenderer.ageSuffix(hoveredWaypoint);
             parts.add(new FooterPart(Icons.SMALL_FLAG, name, Theme.TEXT));
+            if (hoveredWaypoint.isForeign()) {
+                String whose = Lang.format("wayfarmap.gui.shared_by", hoveredWaypoint.ownerName);
+                parts.add(new FooterPart(Icons.SMALL_PERSON, whose, Theme.ACCENT));
+            } else if (hoveredWaypoint.isShared()) {
+                parts.add(new FooterPart(Icons.SMALL_PERSON, Lang.format("wayfarmap.gui.shared"), Theme.ACCENT));
+            }
+            if (hoveredWaypoint.copyOf != null && !hoveredWaypoint.isForeign()) {
+                parts.add(new FooterPart(Icons.SMALL_COPY, GuiWaypointList.copyLabel(hoveredWaypoint), 0xFFF2C14E));
+            }
             parts.add(new FooterPart(null, Lang.format("wayfarmap.gui.waypoint_hint"), Theme.TEXT_MUTED));
         } else {
             String cursorText = hovered[1] >= 0 ? "X: " + hoverX + "  Y: " + hovered[1] + "  Z: " + hoverZ
@@ -1934,9 +1944,18 @@ public class GuiWorldMap extends ScaledScreen {
         showMenu(entries, MENU_MAP, mouseX, mouseY);
     }
 
-    /** Menu of a waypoint on the map: share it in chat, teleport to it, edit, remove or disable it. */
+    /**
+     * Menu of a waypoint on the map: share it in chat or with the team, teleport to it, edit, remove or disable it.
+     * A teammate's one says whose it is, and is saved as an own one instead of edited or removed.
+     */
     private void openWaypointMenu(Waypoint waypoint, int mouseX, int mouseY) {
         List<MenuEntry> entries = new ArrayList<>();
+        final boolean foreign = waypoint.isForeign();
+        if (foreign) {
+            entries.add(
+                new MenuEntry(Lang.format("wayfarmap.gui.shared_by", waypoint.ownerName), false, () -> {})
+                    .icon(Icons.SMALL_PERSON));
+        }
         entries.add(
             new MenuEntry(Lang.format("wayfarmap.gui.share"), true, () -> WaypointShare.share(waypoint))
                 .icon(Icons.SMALL_CHAT));
@@ -1947,11 +1966,34 @@ public class GuiWorldMap extends ScaledScreen {
             mc.displayGuiScreen(null);
             Teleport.teleport(waypoint.x, waypoint.y, waypoint.z);
         }).icon(Icons.SMALL_UP));
-        entries.add(
-            new MenuEntry(
-                Lang.format("wayfarmap.gui.edit"),
-                true,
-                () -> mc.displayGuiScreen(GuiEditWaypoint.edit(this, waypoint))).icon(Icons.SMALL_PENCIL));
+        if (foreign) {
+            entries.add(
+                new MenuEntry(
+                    Lang.format("wayfarmap.gui.save_own"),
+                    true,
+                    () -> WaypointManager.INSTANCE.saveAsOwn(waypoint)).icon(Icons.SMALL_DISK));
+        } else {
+            entries.add(
+                new MenuEntry(
+                    Lang.format("wayfarmap.gui.edit"),
+                    true,
+                    () -> mc.displayGuiScreen(GuiEditWaypoint.edit(this, waypoint))).icon(Icons.SMALL_PENCIL));
+            final Waypoint original = WaypointManager.INSTANCE.getOriginal(waypoint);
+            if (original != null) {
+                // A copy of a teammate's waypoint: the map goes to the one it was made of.
+                entries.add(
+                    new MenuEntry(
+                        Lang.format("wayfarmap.gui.go_original"),
+                        true,
+                        () -> mc.displayGuiScreen(showing(original))).icon(Icons.SMALL_PIN));
+            }
+            if (!waypoint.death && (TeamWaypoints.INSTANCE.isAvailable() || waypoint.isShared())) {
+                entries.add(new MenuEntry(Lang.format("wayfarmap.gui.team_share"), true, () -> {
+                    WaypointManager.setShared(waypoint, !waypoint.isShared());
+                    WaypointManager.INSTANCE.waypointChanged();
+                }, waypoint.isShared()));
+            }
+        }
         entries.add(
             new MenuEntry(Lang.format("wayfarmap.gui.copy"), true, () -> copiedWaypoint = waypoint.copy())
                 .icon(Icons.SMALL_COPY)
@@ -1962,13 +2004,15 @@ public class GuiWorldMap extends ScaledScreen {
             waypoint.enabled = !waypoint.enabled;
             WaypointManager.INSTANCE.waypointChanged();
         }).icon(Icons.SMALL_EYE));
-        // Removing comes last, set apart.
-        entries.add(
-            new MenuEntry(
-                Lang.format("wayfarmap.gui.remove"),
-                true,
-                () -> WaypointManager.INSTANCE.removeWaypoint(waypoint)).icon(Icons.SMALL_TRASH)
-                    .danger());
+        if (!foreign) {
+            // Removing comes last, set apart.
+            entries.add(
+                new MenuEntry(
+                    Lang.format("wayfarmap.gui.remove"),
+                    true,
+                    () -> WaypointManager.INSTANCE.removeWaypoint(waypoint)).icon(Icons.SMALL_TRASH)
+                        .danger());
+        }
         showMenu(entries, MENU_WAYPOINT, mouseX, mouseY);
     }
 
@@ -1982,9 +2026,11 @@ public class GuiWorldMap extends ScaledScreen {
         pasted.y = y;
         pasted.z = z;
         pasted.dimension = viewDimension();
-        // An ordinary waypoint, saved like any other: shown even if the original was off, and a copy of a death
-        // marker is not one more death to keep or drop, nor in the deaths' group.
+        // An ordinary waypoint, saved like any other: shown even if the original was off, the player's own and not
+        // shared whatever the original was, and a copy of a death marker is not one more death to keep or drop, nor
+        // in the deaths' group.
         pasted.enabled = true;
+        pasted.makeOwn();
         if (pasted.death) {
             pasted.death = false;
             pasted.diedAt = 0;

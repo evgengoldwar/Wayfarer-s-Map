@@ -22,15 +22,19 @@ import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import cpw.mods.fml.relauncher.Side;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
 
 /**
  * The team map channel. The client says hello when it joins; a server with this mod and ServerUtilities answers,
- * and from then on the client uploads the chunks it maps and gets its teammates' ones. Servers without the mod
- * never answer, so nothing else is ever sent there.
+ * and from then on the client uploads the chunks it maps and gets its teammates' ones, and the same for the waypoints
+ * shared with the team. Servers without the mod never answer, so nothing else is ever sent there.
  */
 public final class ShareNetwork {
 
-    public static final int PROTOCOL = 2;
+    /** 3: team waypoints ({@link Waypoints}), sent only when both sides say at least that. */
+    public static final int PROTOCOL = 3;
+    public static final int WAYPOINTS_PROTOCOL = 3;
     /** Records per message from the server: at most ~50 KB even uncompressed. */
     public static final int MAX_RECORDS = 32;
     /**
@@ -57,6 +61,8 @@ public final class ShareNetwork {
         channel.registerMessage(SavedChunksToClient.class, SavedChunks.class, 10, Side.CLIENT);
         channel.registerMessage(LoadAllowedToClient.class, LoadAllowed.class, 11, Side.CLIENT);
         channel.registerMessage(LoadEndedToClient.class, LoadEnded.class, 12, Side.CLIENT);
+        channel.registerMessage(WaypointsToServer.class, Waypoints.class, 13, Side.SERVER);
+        channel.registerMessage(WaypointsToClient.class, Waypoints.class, 14, Side.CLIENT);
     }
 
     public static void sendToServer(IMessage message) {
@@ -510,7 +516,79 @@ public final class ShareNetwork {
         }
     }
 
+    /**
+     * Waypoints shared with the team. From a client: its own ones, new or changed ({@link #puts}) and no longer shared
+     * ({@link #ids}). From the server: the same of the teammates. With {@link #full}, {@link #ids} are instead all
+     * that are shared (by this player, or by the teammates): the receiver drops the others it knew.
+     */
+    public static final class Waypoints implements IMessage {
+
+        /** Waypoints per message: client packets are limited to 32 KB. */
+        public static final int MAX_PUTS = 8;
+        private static final int MAX_IDS = 8192;
+
+        public boolean full;
+        public final List<UUID> ids = new ArrayList<>();
+        public final List<SharedWaypoint> puts = new ArrayList<>();
+
+        @Override
+        public void fromBytes(ByteBuf buf) {
+            try (ByteBufInputStream in = new ByteBufInputStream(buf)) {
+                full = in.readBoolean();
+                int count = Math.min(MAX_IDS, in.readInt());
+                for (int i = 0; i < count; i++) {
+                    ids.add(new UUID(in.readLong(), in.readLong()));
+                }
+                count = Math.min(MAX_PUTS, in.readInt());
+                for (int i = 0; i < count; i++) {
+                    puts.add(SharedWaypoint.read(in));
+                }
+            } catch (IOException | RuntimeException e) {
+                WayFarMap.LOG.warn("Bad team waypoints message", e);
+                full = false;
+                ids.clear();
+                puts.clear();
+            }
+        }
+
+        @Override
+        public void toBytes(ByteBuf buf) {
+            try (ByteBufOutputStream out = new ByteBufOutputStream(buf)) {
+                out.writeBoolean(full);
+                out.writeInt(ids.size());
+                for (UUID id : ids) {
+                    out.writeLong(id.getMostSignificantBits());
+                    out.writeLong(id.getLeastSignificantBits());
+                }
+                out.writeInt(puts.size());
+                for (SharedWaypoint waypoint : puts) {
+                    waypoint.write(out);
+                }
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
     // Handlers run on the network thread; both sides only queue the message for their own thread.
+
+    public static final class WaypointsToServer implements IMessageHandler<Waypoints, IMessage> {
+
+        @Override
+        public IMessage onMessage(Waypoints message, MessageContext context) {
+            TeamMapServer.receive(context.getServerHandler().playerEntity, message);
+            return null;
+        }
+    }
+
+    public static final class WaypointsToClient implements IMessageHandler<Waypoints, IMessage> {
+
+        @Override
+        public IMessage onMessage(Waypoints message, MessageContext context) {
+            WayFarMap.proxy.receiveTeamMap(message);
+            return null;
+        }
+    }
 
     public static final class LoadBatchToClient implements IMessageHandler<LoadBatch, IMessage> {
 

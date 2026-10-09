@@ -26,7 +26,8 @@ import WayFarMap.client.gui.ui.Theme;
 
 /**
  * About the mod: its glowing logo over a starry top, the name and the version (a click copies it), what the mod is,
- * who made it (a click opens the author's GitHub), who tested it, and the author's pages. Its parts slide in one after
+ * who made it (the author and the developer, a click opens their GitHub), who tested it, and the author's pages. Its
+ * parts slide in one after
  * another when it opens; What's new at the bottom opens the changelog, Esc or Close closes it.
  */
 public class GuiAbout extends ScaledScreen {
@@ -36,6 +37,9 @@ public class GuiAbout extends ScaledScreen {
     static final String[] TESTERS = { "Faotik", "Octo" };
     static final String GITHUB_URL = "https://github.com/evgengoldwar", BOOSTY_URL = "https://boosty.to/evgenwargold",
         TELEGRAM_URL = "https://t.me/Shaterplay4";
+    /** Those who made the mod, a card each: {name, lang key of what they did, their GitHub}. */
+    static final String[][] MAKERS = { { AUTHOR, "wayfarmap.about.author_role", GITHUB_URL },
+        { "Navatusein", "wayfarmap.about.developer_role", "https://github.com/Navatusein" } };
     /** The mod's own page, for the GitHub link at the bottom. */
     static final String MOD_GITHUB_URL = "https://github.com/evgengoldwar/Wayfarer-s-Map";
 
@@ -77,11 +81,12 @@ public class GuiAbout extends ScaledScreen {
     private long copiedAt;
 
     /** Where things were drawn last, for the clicks: {x0, y0, x1, y1}. */
-    private int[] versionRect = new int[4], authorRect = new int[4], closeRect = new int[4], changelogRect = new int[4];
+    private int[] versionRect = new int[4], closeRect = new int[4], changelogRect = new int[4];
+    private final int[][] makerRects = new int[MAKERS.length][4];
     private final int[][] linkRects = new int[LINKS.length][4];
     /** How lit each thing is by the mouse. */
-    private final Smooth versionLight = new Smooth(0), authorLight = new Smooth(0), closeLight = new Smooth(0),
-        changelogLight = new Smooth(0);
+    private final Smooth versionLight = new Smooth(0), closeLight = new Smooth(0), changelogLight = new Smooth(0);
+    private final Smooth[] makerLight = { new Smooth(0), new Smooth(0) };
     private final Smooth[] linkLight = { new Smooth(0), new Smooth(0), new Smooth(0) };
     private final Smooth[] chipLight;
 
@@ -225,15 +230,19 @@ public class GuiAbout extends ScaledScreen {
         }
         int base = top + HERO_HEIGHT + 10 + tagline().size() * 10 + 8;
 
-        // Who made it: a card with the author's avatar, a click opens their GitHub.
+        // Who made it: a card each, side by side, with their avatar; a click opens their GitHub.
         y = base + slide(2);
         sectionTitle(Lang.format("wayfarmap.about.author"), left, right, y);
         y += SECTION_TITLE;
-        authorRect = new int[] { left + PAD, y, right - PAD, y + CARD_HEIGHT };
-        boolean authorHovered = inside(mouseX, mouseY, authorRect);
-        drawAuthorCard(authorRect, authorLight.update(authorHovered ? 1 : 0, 22));
-        if (authorHovered) {
-            tooltip = Collections.singletonList(GITHUB_URL);
+        int cardGap = 6, cardWidth = (textWidth() - cardGap * (MAKERS.length - 1)) / MAKERS.length;
+        for (int i = 0; i < MAKERS.length; i++) {
+            int x0 = left + PAD + i * (cardWidth + cardGap);
+            makerRects[i] = new int[] { x0, y, i == MAKERS.length - 1 ? right - PAD : x0 + cardWidth, y + CARD_HEIGHT };
+            boolean hovered = inside(mouseX, mouseY, makerRects[i]);
+            drawMakerCard(i, makerRects[i], makerLight[i].update(hovered ? 1 : 0, 22));
+            if (hovered) {
+                tooltip = Collections.singletonList(MAKERS[i][2]);
+            }
         }
         base += SECTION_TITLE + CARD_HEIGHT + 10;
 
@@ -385,19 +394,21 @@ public class GuiAbout extends ScaledScreen {
         GL11.glColor4f(1f, 1f, 1f, 1f);
     }
 
-    /** The author: an avatar, the name and what they did, and the GitHub logo; lit under the mouse. */
-    private void drawAuthorCard(int[] r, double lit) {
+    /** One who made the mod: an avatar, the name and what they did, and the GitHub logo; lit under the mouse. */
+    private void drawMakerCard(int i, int[] r, double lit) {
+        String name = MAKERS[i][0];
         Theme.fill(r[0], r[1], r[2], r[3], Theme.blend(Theme.CONTROL, Theme.CONTROL_HOVER, lit));
         Theme.outline(r[0], r[1], r[2], r[3], Theme.blend(Theme.BORDER, Theme.ACCENT, lit));
         // The accent along the left edge.
         Theme.fill(r[0] + 1, r[1] + 1, r[0] + 3, r[3] - 1, Theme.ACCENT);
         int avatarX = r[0] + 19, avatarY = (r[1] + r[3]) / 2;
         drawRound(CIRCLE, avatarX, avatarY, 13, (int) (0x30 + 0x40 * lit) << 24 | (Theme.ACCENT & 0xFFFFFF));
-        drawAvatar(avatarX, avatarY, 11, AUTHOR, Theme.ACCENT);
-        Theme.text(fontRendererObj, AUTHOR, r[0] + 38, r[1] + 6, Theme.TEXT);
-        String role = Lang.format("wayfarmap.about.author_role");
-        Theme.text(fontRendererObj, role, r[0] + 38, r[1] + 17, Theme.TEXT_MUTED);
+        drawAvatar(avatarX, avatarY, 11, name, Theme.ACCENT);
         String[] icon = Icons.GITHUB;
+        int room = r[2] - 14 - Icons.width(icon) - (r[0] + 38);
+        Theme.text(fontRendererObj, Theme.ellipsize(fontRendererObj, name, room), r[0] + 38, r[1] + 6, Theme.TEXT);
+        String role = Theme.ellipsize(fontRendererObj, Lang.format(MAKERS[i][1]), room);
+        Theme.text(fontRendererObj, role, r[0] + 38, r[1] + 17, Theme.TEXT_MUTED);
         Icons.draw(
             icon,
             r[2] - 10 - Icons.width(icon),
@@ -464,9 +475,13 @@ public class GuiAbout extends ScaledScreen {
         } else if (inside(mouseX, mouseY, versionRect)) {
             setClipboardString(Tags.VERSION);
             copiedAt = System.currentTimeMillis();
-        } else if (inside(mouseX, mouseY, authorRect)) {
-            openLink(GITHUB_URL);
         } else {
+            for (int i = 0; i < MAKERS.length; i++) {
+                if (inside(mouseX, mouseY, makerRects[i])) {
+                    openLink(MAKERS[i][2]);
+                    return;
+                }
+            }
             for (int i = 0; i < LINKS.length; i++) {
                 if (inside(mouseX, mouseY, linkRects[i])) {
                     openLink((String) LINKS[i][1]);

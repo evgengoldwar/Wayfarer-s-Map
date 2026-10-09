@@ -22,7 +22,8 @@ import WayFarMap.client.gui.ui.Theme;
  * The window shown over the world map the first time it is opened, and again after the mod is updated. A starry top
  * with the glowing logo, the name and the version stays put (a click on the version opens what's new; after an
  * update it shows the version before and the new one); under it four pages slide sideways: what the mod can do (a
- * card per feature), the first things to know (numbered steps on key caps), who made it with the author's pages, and
+ * card per feature), the first things to know (numbered steps on key caps), who made and tested it with the author's
+ * pages, and
  * the choice of the mod's language. The dots, Back and Next, the arrow keys and the mouse wheel flip the pages; the
  * last page's button (What's new: the changelog opens after it) and Enter on it finish it, the cross or Esc close it,
  * and Help closes it and opens the help.
@@ -86,18 +87,19 @@ final class WelcomeWindow {
 
     /** Where things were drawn last, for the clicks: {x0, y0, x1, y1}. */
     private int[] nextRect = new int[4], backRect = new int[4], helpRect = new int[4], closeRect = new int[4],
-        authorRect = new int[4], versionRect = new int[4];
+        versionRect = new int[4];
+    private final int[][] makerRects = new int[GuiAbout.MAKERS.length][4];
     private final int[][] linkRects = new int[LINKS.length][4], dotRects = new int[PAGES][4],
         languageRects = new int[Lang.CODES.length][4];
     /** How lit each thing is by the mouse, and how wide each page's dot is (the shown one is a long pill). */
     private final Smooth nextLight = new Smooth(0), backLight = new Smooth(0), helpLight = new Smooth(0),
-        closeLight = new Smooth(0), authorLight = new Smooth(0), backShown = new Smooth(0),
-        versionLight = new Smooth(0);
+        closeLight = new Smooth(0), backShown = new Smooth(0), versionLight = new Smooth(0);
     /** The panel's inside, which everything is cut to: {x0, y0, x1, y1}. */
     private int[] panelClip = new int[4];
     private final Smooth[] linkLight = smooths(LINKS.length, 0), cardLight = smooths(FEATURES.length, 0),
         dotWidth = smooths(PAGES, 6), chipLight = smooths(GuiAbout.TESTERS.length + 1, 0),
-        languageLight = smooths(Lang.CODES.length, 0), languageChosen = smooths(Lang.CODES.length, 0);
+        makerLight = smooths(GuiAbout.MAKERS.length, 0), languageLight = smooths(Lang.CODES.length, 0),
+        languageChosen = smooths(Lang.CODES.length, 0);
 
     /** @param updatedFrom the version the window was last closed in if the mod was updated since, else null */
     WelcomeWindow(FontRenderer font, String updatedFrom) {
@@ -182,7 +184,7 @@ final class WelcomeWindow {
             case 1:
                 return SECTION_TITLE + steps().length * STEP_HEIGHT;
             case 2:
-                return 30 + SECTION_TITLE + CHIP_HEIGHT + 10 + LINK_HEIGHT;
+                return 30 + SECTION_TITLE + 2 * CHIP_HEIGHT + 4 + 10 + LINK_HEIGHT;
             default:
                 return SECTION_TITLE + 14
                     + languageRows() * LANGUAGE_HEIGHT
@@ -486,27 +488,34 @@ final class WelcomeWindow {
         y = top + 30 + slide(start, 1);
         sectionTitle(Lang.format("wayfarmap.welcome.credits_title"), left, y);
         y += SECTION_TITLE;
-        // The author first, in the accent, then the testers and the chat.
+        // Those who made it first, in the accent, then the testers and the chat: in a line, going on in a second one.
         boolean interactive = start != 0;
-        String author = GuiAbout.AUTHOR;
         int x = left + PAD;
-        int authorWidth = 3 + 16 + 6 + font.getStringWidth(author) + 8 + Icons.width(Icons.GITHUB) + 6;
-        authorRect = new int[] { x, y, x + authorWidth, y + CHIP_HEIGHT };
-        double authorLit = authorLight.update(interactive && inside(mouseX, mouseY, authorRect) ? 1 : 0, 22);
-        drawChip(authorRect, author, -1, authorLit);
-        x += authorWidth + 6;
+        for (int i = 0; i < GuiAbout.MAKERS.length; i++) {
+            String maker = GuiAbout.MAKERS[i][0];
+            int w = 3 + 16 + 6 + font.getStringWidth(maker) + 8 + Icons.width(Icons.GITHUB) + 6;
+            if (x > left + PAD && x + w > left + WIDTH - PAD) {
+                x = left + PAD;
+                y += CHIP_HEIGHT + 4;
+            }
+            makerRects[i] = new int[] { x, y, x + w, y + CHIP_HEIGHT };
+            boolean hovered = interactive && inside(mouseX, mouseY, makerRects[i]);
+            drawChip(makerRects[i], maker, -1, makerLight[i].update(hovered ? 1 : 0, 22));
+            x += w + 6;
+        }
         String[] chips = chips();
         for (int i = 0; i < chips.length; i++) {
             int w = 3 + 16 + 6 + font.getStringWidth(chips[i]) + 8;
-            if (x + w > left + WIDTH - PAD) {
-                break;
+            if (x > left + PAD && x + w > left + WIDTH - PAD) {
+                x = left + PAD;
+                y += CHIP_HEIGHT + 4;
             }
             int[] r = { x, y, x + w, y + CHIP_HEIGHT };
             drawChip(r, chips[i], i, chipLight[i].update(interactive && inside(mouseX, mouseY, r) ? 1 : 0, 22));
             x += w + 6;
         }
 
-        y = top + 30 + SECTION_TITLE + CHIP_HEIGHT + 10 + slide(start, 2);
+        y = top + 30 + SECTION_TITLE + 2 * CHIP_HEIGHT + 4 + 10 + slide(start, 2);
         int gap = 6, linkWidth = (textWidth() - 2 * gap) / 3;
         for (int i = 0; i < LINKS.length; i++) {
             int x0 = left + PAD + i * (linkWidth + gap);
@@ -609,7 +618,7 @@ final class WelcomeWindow {
         }
     }
 
-    /** A person (an avatar and the name) or the chat (its icon and name); the author's has the GitHub logo too. */
+    /** A person (an avatar and the name) or the chat (its icon and name); the makers' have the GitHub logo too. */
     private void drawChip(int[] r, String name, int i, double lit) {
         boolean author = i < 0, chat = i >= GuiAbout.TESTERS.length;
         int color = author ? Theme.ACCENT
@@ -828,9 +837,11 @@ final class WelcomeWindow {
             }
         }
         if (page == 2) {
-            if (inside(mouseX, mouseY, authorRect)) {
-                GuiAbout.openLink(GuiAbout.GITHUB_URL);
-                return Click.NONE;
+            for (int i = 0; i < GuiAbout.MAKERS.length; i++) {
+                if (inside(mouseX, mouseY, makerRects[i])) {
+                    GuiAbout.openLink(GuiAbout.MAKERS[i][2]);
+                    return Click.NONE;
+                }
             }
             for (int i = 0; i < LINKS.length; i++) {
                 if (inside(mouseX, mouseY, linkRects[i])) {

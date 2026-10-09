@@ -39,6 +39,19 @@ public class Waypoint {
     public boolean death;
     /** When the player died there (milliseconds since 1970), 0 if unknown: shown as "5 min ago". */
     public long diedAt;
+    /** Id (a UUID) it is shared with the team under, or null when it is not shared. */
+    public String shareId;
+    /** For a teammate's waypoint: that player's UUID and name. Null for the player's own. */
+    public String owner;
+    public String ownerName;
+    /** For a teammate's waypoint: the group its owner keeps it in, to follow it when the owner moves it. */
+    public String ownerGroup;
+    /**
+     * For a copy the player saved of a teammate's waypoint: the id that one is shared under and its owner's name, to
+     * say it is a copy and to find the original while it is still shared.
+     */
+    public String copyOf;
+    public String copyOfOwner;
 
     private transient ItemStack cachedIcon;
     private transient boolean iconResolved;
@@ -65,6 +78,12 @@ public class Waypoint {
         copy.beam = beam;
         copy.death = death;
         copy.diedAt = diedAt;
+        copy.shareId = shareId;
+        copy.owner = owner;
+        copy.ownerName = ownerName;
+        copy.ownerGroup = ownerGroup;
+        copy.copyOf = copyOf;
+        copy.copyOfOwner = copyOfOwner;
         return copy;
     }
 
@@ -84,7 +103,33 @@ public class Waypoint {
         beam = other.beam;
         death = other.death;
         diedAt = other.diedAt;
+        shareId = other.shareId;
+        owner = other.owner;
+        ownerName = other.ownerName;
+        ownerGroup = other.ownerGroup;
+        copyOf = other.copyOf;
+        copyOfOwner = other.copyOfOwner;
         iconResolved = false;
+    }
+
+    /** A teammate's waypoint: shown here, changed only by its owner. */
+    public boolean isForeign() {
+        return owner != null;
+    }
+
+    /** The player's own waypoint that the team sees. */
+    public boolean isShared() {
+        return shareId != null && owner == null;
+    }
+
+    /** Makes it an ordinary waypoint of the player, not shared, nobody else's and no copy of one. */
+    public void makeOwn() {
+        shareId = null;
+        owner = null;
+        ownerName = null;
+        ownerGroup = null;
+        copyOf = null;
+        copyOfOwner = null;
     }
 
     /** @return the icon as an item stack, or null if there is no icon or the item no longer exists. */

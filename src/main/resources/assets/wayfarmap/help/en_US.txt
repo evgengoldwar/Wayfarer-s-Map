@@ -87,6 +87,9 @@ A waypoint is a point with a §fname§r, an §foutline color§r and an §fitem i
 - §bMap§r in the waypoint list — opens the world map with that waypoint in the middle (in its dimension)
 - §bBeam§r in the editor — a §fbeacon-like beam§r in the waypoint's color goes through its column in the world, from the bottom of the world to the top (off by default)
 - §bTo chat§r in the editor — sends the waypoint to the chat; players with the mod see its name and an §a[Add]§r button that adds it to theirs §fwith its group§r (created if missing)
+- §bShare with team§r in the editor, the list and the waypoint's menu — teammates see the waypoint on their maps, with what you change in it later (needs the mod and §fServerUtilities§r on the server, and a team). Switch it off and it is gone for them
+- A §fteammate's waypoint§r is tagged with their name: you can hide it, or §bSave as mine§r to get your own copy to edit — the copy stays when the teammate stops sharing. It is tagged §eCopy: name§r, and §bShow the original§r (on its card and in its menu) goes to the teammate's waypoint while it is still shared
+- A §fgroup§r can share its new waypoints by itself, and show or hide teammates' waypoints coming into it — the buttons on its title in the list. For all groups: §bSettings → Waypoints → Team§r
 
 > Long names are cut so labels don't overlap. Hover a waypoint to see the full name at the bottom.
 

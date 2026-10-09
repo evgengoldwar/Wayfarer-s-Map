@@ -2,6 +2,7 @@ package WayFarMap.client.gui;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -19,24 +20,28 @@ import WayFarMap.client.gui.ui.ScaledScreen;
 import WayFarMap.client.gui.ui.Theme;
 import WayFarMap.client.gui.ui.WindowHeader;
 import WayFarMap.client.waypoint.Symbols;
+import WayFarMap.client.waypoint.TeamWaypoints;
 import WayFarMap.client.waypoint.Waypoint;
 import WayFarMap.client.waypoint.WaypointGroup;
 import WayFarMap.client.waypoint.WaypointManager;
 import WayFarMap.client.waypoint.WaypointRenderer;
 import WayFarMap.client.waypoint.WaypointShare;
 
-/** Creates or edits a waypoint: name, coordinates, group, icon and outline color. */
+/**
+ * Creates or edits a waypoint: name, coordinates, group, icon, outline color and whether the team sees it. Only for
+ * the player's own waypoints: a teammate's one is saved as an own one first.
+ */
 public class GuiEditWaypoint extends ScaledScreen {
 
     private static final int DEFAULT_OUTLINE = 0xFF5555;
     /** Color sample next to the outline switch; a click opens the color picker. */
     private static final int SWATCH_X = 144, SWATCH_Y = 155, SWATCH_W = 76, SWATCH_H = 18;
-    private static final int BUTTON_ROW = 205;
+    private static final int BUTTON_ROW = 229;
     /** How far above the name the panel and its header start. */
     private static final int HEADER_ABOVE = WindowHeader.HEIGHT - 8;
 
     private static final int ID_GROUP = 1, ID_NEW_GROUP = 2, ID_ICON = 3, ID_OUTLINE = 4, ID_SAVE = 5, ID_DELETE = 6,
-        ID_CANCEL = 7, ID_TELEPORT = 8, ID_BEAM = 9, ID_SHARE = 10;
+        ID_CANCEL = 7, ID_TELEPORT = 8, ID_BEAM = 9, ID_SHARE = 10, ID_TEAM = 11;
     /** Square left of the icon button showing the marker as it will look. */
     private static final int PREVIEW = 18;
 
@@ -47,6 +52,10 @@ public class GuiEditWaypoint extends ScaledScreen {
     private final Waypoint edited;
     /** Last outline color, remembered while the outline is switched off. */
     private int outlineColor;
+    /** The id it is shared under, kept while sharing is switched off and on again. */
+    private String shareId;
+    /** The team switch was set by hand: picking a group no longer sets it. */
+    private boolean shareTouched;
 
     private GuiTextField nameField, xField, yField, zField, newGroupField;
     private final List<GuiTextField> fields = new ArrayList<>();
@@ -68,6 +77,7 @@ public class GuiEditWaypoint extends ScaledScreen {
         this.target = target;
         this.edited = edited;
         this.outlineColor = edited.outlineColor != null ? edited.outlineColor : DEFAULT_OUTLINE;
+        this.shareId = edited.shareId;
     }
 
     @Override
@@ -75,7 +85,7 @@ public class GuiEditWaypoint extends ScaledScreen {
         Keyboard.enableRepeatEvents(true);
         left = width / 2 - 110;
         // Room above for the header, which starts over the name.
-        top = Math.max(4 + HEADER_ABOVE, height / 2 - 130);
+        top = Math.max(4 + HEADER_ABOVE, height / 2 - 142);
         fields.clear();
         buttonList.clear();
 
@@ -94,6 +104,8 @@ public class GuiEditWaypoint extends ScaledScreen {
         // Beacon beam switch, and sharing the waypoint in the chat.
         buttonList.add(new FlatButton(ID_BEAM, left, top + 179, 140, 18, ""));
         buttonList.add(new FlatButton(ID_SHARE, left + 144, top + 179, 76, 18, Lang.format("wayfarmap.share.button")));
+        // Shared with the team: teammates see it, and what is changed here.
+        buttonList.add(new FlatButton(ID_TEAM, left, top + 203, 220, 18, ""));
         // Bottom row: Save [Teleport Delete] Cancel; teleport and delete only exist for saved waypoints. Each button
         // gets its text width plus an equal share of the remaining space.
         FlatButton saveButton = new FlatButton(ID_SAVE, 0, top + BUTTON_ROW, 0, 18, Lang.format("wayfarmap.gui.save"));
@@ -167,6 +179,13 @@ public class GuiEditWaypoint extends ScaledScreen {
                         + Lang.format(edited.beam ? "options.on" : "options.off");
                     ((FlatButton) button).active = edited.beam;
                     break;
+                case ID_TEAM:
+                    button.displayString = Lang.format("wayfarmap.gui.team_share") + ": "
+                        + Lang.format(edited.shareId != null ? "options.on" : "options.off");
+                    ((FlatButton) button).active = edited.shareId != null;
+                    // Without a team (or the mod on the server) it can only be switched off.
+                    button.enabled = !edited.death && (TeamWaypoints.INSTANCE.isAvailable() || edited.shareId != null);
+                    break;
                 case ID_DELETE:
                     button.displayString = Lang
                         .format(confirmDelete ? "wayfarmap.gui.confirm" : "wayfarmap.gui.delete");
@@ -205,6 +224,23 @@ public class GuiEditWaypoint extends ScaledScreen {
         }
     }
 
+    /** A new waypoint is shared when put into a group that shares its new ones. */
+    private void groupPicked() {
+        if (target != null || shareTouched || !TeamWaypoints.INSTANCE.isAvailable()) {
+            return;
+        }
+        WaypointGroup group = WaypointManager.INSTANCE.getGroup(edited.group);
+        setShared(group != null && group.shareNew);
+    }
+
+    private void setShared(boolean shared) {
+        if (shared && shareId == null) {
+            shareId = UUID.randomUUID()
+                .toString();
+        }
+        edited.shareId = shared ? shareId : null;
+    }
+
     private List<String> groupOptions() {
         List<String> options = new ArrayList<>();
         options.add(null);
@@ -224,6 +260,7 @@ public class GuiEditWaypoint extends ScaledScreen {
                 List<String> options = groupOptions();
                 int index = options.indexOf(edited.group);
                 edited.group = options.get((index + 1) % options.size());
+                groupPicked();
                 break;
             }
             case ID_NEW_GROUP: {
@@ -232,6 +269,7 @@ public class GuiEditWaypoint extends ScaledScreen {
                 if (!name.isEmpty()) {
                     edited.group = WaypointManager.INSTANCE.createGroup(name).name;
                     newGroupField.setText("");
+                    groupPicked();
                 }
                 break;
             }
@@ -244,6 +282,10 @@ public class GuiEditWaypoint extends ScaledScreen {
                 break;
             case ID_BEAM:
                 edited.beam = !edited.beam;
+                break;
+            case ID_TEAM:
+                shareTouched = true;
+                setShared(edited.shareId == null);
                 break;
             case ID_SHARE:
                 // Shares what the editor shows now, saved or not.

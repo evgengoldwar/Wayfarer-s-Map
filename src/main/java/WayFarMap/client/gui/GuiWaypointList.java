@@ -30,6 +30,7 @@ import WayFarMap.client.gui.ui.Smooth;
 import WayFarMap.client.gui.ui.Theme;
 import WayFarMap.client.gui.ui.WindowHeader;
 import WayFarMap.client.map.MapManager;
+import WayFarMap.client.waypoint.TeamWaypoints;
 import WayFarMap.client.waypoint.Waypoint;
 import WayFarMap.client.waypoint.WaypointGroup;
 import WayFarMap.client.waypoint.WaypointManager;
@@ -42,6 +43,11 @@ import WayFarMap.client.waypoint.WaypointShare;
  * the group picked on the right, as cards in sections per group, each with its icon, place, distance and a compass
  * arrow pointing to it. Shown for one dimension at a time (this one at first) or all of them, narrowed down by
  * searching names and coordinates (typing anywhere searches) and sorted as kept, by name or by distance.
+ * <p>
+ * In a team (on a server with the mod) a waypoint can be shared with it from its card, and a group's section title
+ * has the group's sharing: whether its new waypoints are shared, whether teammates' ones coming into it are shown.
+ * Teammates' waypoints are listed with the others, tagged with their owner; they can be hidden or saved as own, not
+ * changed.
  */
 public class GuiWaypointList extends ScaledScreen {
 
@@ -76,6 +82,8 @@ public class GuiWaypointList extends ScaledScreen {
         "#######" };
     private static final String[] SMALL_TELEPORT = { "..###..", ".#...#.", "#..#..#", "#.###.#", "#..#..#", ".#...#.",
         "..###.." };
+    private static final String[] SMALL_EYE_OFF = { "#......", ".####..", ".##..#.", "#..#..#", ".#..##.", "..####.",
+        "......#" };
     private static final String[] SMALL_SORT = { ".#.....", "###....", ".#..###", ".#.....", ".#..##.", ".#.....",
         ".#..#.." };
 
@@ -209,6 +217,8 @@ public class GuiWaypointList extends ScaledScreen {
     private long pendingDeleteTime;
     /** The tooltip of what the mouse is on, drawn last. */
     private String tooltip;
+    /** {@link WaypointManager#getTeamRevision} the rows were made at. */
+    private int teamRevision;
 
     public GuiWaypointList(GuiScreen parent) {
         this.parent = parent;
@@ -309,6 +319,7 @@ public class GuiWaypointList extends ScaledScreen {
         entries.add(all);
         rows.clear();
         shownCount = 0;
+        teamRevision = manager.getTeamRevision();
         for (WaypointGroup group : manager.getGroups()) {
             addGroup(group, false, group.name, manager.getWaypointsInGroup(group.name), all);
         }
@@ -412,8 +423,11 @@ public class GuiWaypointList extends ScaledScreen {
         String query = searchText.toLowerCase(Locale.ROOT)
             .trim();
         String coordinates = waypoint.x + " " + waypoint.y + " " + waypoint.z;
-        return waypoint.name.toLowerCase(Locale.ROOT)
-            .contains(query) || coordinates.contains(query)
+        boolean owner = waypoint.ownerName != null && waypoint.ownerName.toLowerCase(Locale.ROOT)
+            .contains(query);
+        return owner || waypoint.name.toLowerCase(Locale.ROOT)
+            .contains(query)
+            || coordinates.contains(query)
             || (waypoint.x + ", " + waypoint.y + ", " + waypoint.z).contains(query);
     }
 
@@ -641,8 +655,37 @@ public class GuiWaypointList extends ScaledScreen {
         mc.displayGuiScreen(GuiWorldMap.showing(waypoint));
     }
 
+    /** A teammate's waypoint is not edited: it is saved as an own one first. */
     private void edit(Waypoint waypoint) {
-        mc.displayGuiScreen(GuiEditWaypoint.edit(this, waypoint));
+        if (!waypoint.isForeign()) {
+            mc.displayGuiScreen(GuiEditWaypoint.edit(this, waypoint));
+        }
+    }
+
+    /** "Copy: Steve" for a copy of a teammate's waypoint. */
+    static String copyLabel(Waypoint waypoint) {
+        return waypoint.copyOfOwner == null || waypoint.copyOfOwner.isEmpty() ? Lang.format("wayfarmap.gui.copy_tag")
+            : Lang.format("wayfarmap.gui.copy_of", waypoint.copyOfOwner);
+    }
+
+    /** Picks the waypoint in the list, taking off whatever keeps it from being listed. */
+    private void reveal(Waypoint waypoint) {
+        rebuildRows();
+        if (!isListed(waypoint)) {
+            pickedGroup = null;
+            pickedDimension = ALL;
+            searchField.setText("");
+            searchText = "";
+            collapsed.remove(waypoint.group == null ? UNGROUPED_KEY : waypoint.group);
+            rebuildRows();
+        }
+        selected = waypoint;
+        scrollTo(waypoint);
+    }
+
+    private static boolean canShare(Waypoint waypoint) {
+        return !waypoint.isForeign() && !waypoint.death
+            && (TeamWaypoints.INSTANCE.isAvailable() || waypoint.isShared());
     }
 
     private boolean canTeleport(Waypoint waypoint) {
@@ -712,7 +755,7 @@ public class GuiWaypointList extends ScaledScreen {
                 }
                 return;
             case Keyboard.KEY_DELETE:
-                if (selected != null) {
+                if (selected != null && !selected.isForeign()) {
                     final Waypoint waypoint = selected;
                     confirmDelete(waypoint, () -> WaypointManager.INSTANCE.removeWaypoint(waypoint));
                 }
@@ -978,6 +1021,10 @@ public class GuiWaypointList extends ScaledScreen {
     public void drawScaled(int mouseX, int mouseY, float partialTicks) {
         tooltip = null;
         hits.clear();
+        if (teamRevision != WaypointManager.INSTANCE.getTeamRevision()) {
+            // Teammates' waypoints came or went meanwhile.
+            rebuildRows();
+        }
         Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
         // A soft shadow around the window.
         Theme.fill(panelLeft - 2, panelTop + 2, panelRight + 2, panelBottom + 2, 0x30000000);
@@ -1341,11 +1388,17 @@ public class GuiWaypointList extends ScaledScreen {
         String count = String.valueOf(row.matching.size());
         Theme.text(fontRendererObj, count, x, cy - 4, Theme.TEXT_MUTED);
         x += fontRendererObj.getStringWidth(count) + 6;
+        if (row.group != null && row.group.shareNew) {
+            Icons.draw(Icons.SMALL_PERSON, x, cy - 3, Theme.ACCENT);
+            x += 11;
+        }
         if (!visible) {
             drawEyeOff(x, cy - 2, Theme.TEXT_DISABLED);
             String hidden = Lang.format("wayfarmap.gui.hidden");
             Theme.text(fontRendererObj, hidden, x + 10, cy - 4, Theme.TEXT_DISABLED);
         }
+        // The buttons, from the right: clearing the group, then its sharing with the team.
+        int buttonsRight = x1 - 4;
         if (!dropping && lit > 0.05 && !row.matching.isEmpty()) {
             // Deletes all of the group's waypoints the list shows (the filters apply), after a second click.
             final String pendingKey = "\u0000clear:" + key;
@@ -1354,6 +1407,7 @@ public class GuiWaypointList extends ScaledScreen {
             String label = Lang.format(pending ? "wayfarmap.gui.confirm" : "wayfarmap.gui.clear_group");
             int w = fontRendererObj.getStringWidth(label) + 10;
             int bx1 = x1 - 4, bx0 = bx1 - w, by = y + 4;
+            buttonsRight = bx0 - 3;
             boolean over = Theme.inside(mouseX, mouseY, bx0, by, bx1, by + 12);
             int fill = pending ? Theme.DANGER : over ? Theme.CONTROL_HOVER : Theme.CONTROL;
             Theme.fill(bx0, by, bx1, by + 12, Theme.blend(SECTION, fill, lit));
@@ -1367,6 +1421,59 @@ public class GuiWaypointList extends ScaledScreen {
                 () -> confirmDelete(pendingKey, () -> WaypointManager.INSTANCE.removeWaypoints(waypoints)),
                 Lang.format("wayfarmap.gui.clear_group_hint"));
         }
+        if (!dropping && lit > 0.05 && row.group != null && TeamWaypoints.INSTANCE.isAvailable()) {
+            drawSharing(row.group, buttonsRight, y + 3, mouseX, mouseY, lit, Theme.blend(SECTION, CARD, lit));
+        }
+    }
+
+    /**
+     * A group's sharing with the team, from the right: share all of its waypoints now, show or hide teammates'
+     * waypoints coming into it (or as the settings say), share the waypoints made in it from now on.
+     */
+    private void drawSharing(final WaypointGroup group, int right, int y, int mouseX, int mouseY, double lit,
+        int background) {
+        final WaypointManager manager = WaypointManager.INSTANCE;
+        int x = right - ACTION_SIZE;
+        action(
+            x,
+            y,
+            Icons.SMALL_UP,
+            Theme.TEXT,
+            0,
+            lit,
+            background,
+            mouseX,
+            mouseY,
+            () -> manager.shareGroup(group),
+            Lang.format("wayfarmap.gui.share_group_all"));
+        x -= ACTION_STEP;
+        final int incoming = group.incoming;
+        boolean asSettings = incoming == WaypointGroup.INCOMING_DEFAULT;
+        action(
+            x,
+            y,
+            incoming == WaypointGroup.INCOMING_HIDDEN ? SMALL_EYE_OFF : Icons.SMALL_EYE,
+            asSettings ? Theme.TEXT_MUTED : Theme.TEXT,
+            asSettings ? 0 : Theme.ACCENT_DIM,
+            lit,
+            background,
+            mouseX,
+            mouseY,
+            () -> manager.setIncoming(group, (incoming + 1) % 3),
+            Lang.format("wayfarmap.gui.incoming." + incoming));
+        x -= ACTION_STEP;
+        action(
+            x,
+            y,
+            Icons.SMALL_PERSON,
+            group.shareNew ? Theme.TEXT : Theme.TEXT_MUTED,
+            group.shareNew ? Theme.ACCENT_DIM : 0,
+            lit,
+            background,
+            mouseX,
+            mouseY,
+            () -> manager.setShareNew(group, !group.shareNew),
+            Lang.format(group.shareNew ? "wayfarmap.gui.share_new_on" : "wayfarmap.gui.share_new_off"));
     }
 
     /**
@@ -1475,12 +1582,26 @@ public class GuiWaypointList extends ScaledScreen {
                 .trim();
             tagColor = Theme.DANGER;
         }
-        if (tag != null && !tag.isEmpty() && right - x > 24) {
-            tag = Theme.ellipsize(fontRendererObj, tag, right - x - 6);
-            int w = fontRendererObj.getStringWidth(tag) + 6;
-            Theme.fill(x, y - 2, x + w, y + 9, Theme.blend(background, tagColor, 0.18));
-            Theme.text(fontRendererObj, tag, x + 3, y, tagColor);
+        x = drawTag(tag, tagColor, x, y, right, background);
+        // Whose it is, or that the team sees it.
+        String team = waypoint.isForeign() ? waypoint.ownerName
+            : waypoint.isShared() ? Lang.format("wayfarmap.gui.shared") : null;
+        x = drawTag(team, Theme.ACCENT, x, y, right, background);
+        if (waypoint.copyOf != null && !waypoint.isForeign()) {
+            drawTag(copyLabel(waypoint), 0xFFF2C14E, x, y, right, background);
         }
+    }
+
+    /** A word on a tinted plate, if there is room for it; returns where the next one goes. */
+    private int drawTag(String tag, int color, int x, int y, int right, int background) {
+        if (tag == null || tag.isEmpty() || right - x <= 24) {
+            return x;
+        }
+        tag = Theme.ellipsize(fontRendererObj, tag, right - x - 6);
+        int w = fontRendererObj.getStringWidth(tag) + 6;
+        Theme.fill(x, y - 2, x + w, y + 9, Theme.blend(background, color, 0.18));
+        Theme.text(fontRendererObj, tag, x + 3, y, color);
+        return x + w + 4;
     }
 
     /** "123 m" from the player, null in another dimension. */
@@ -1517,40 +1638,91 @@ public class GuiWaypointList extends ScaledScreen {
     }
 
     private int actionCount(Waypoint waypoint) {
-        return canTeleport(waypoint) ? 6 : 5;
+        int count = waypoint.isForeign() ? 4 : canShare(waypoint) ? 6 : 5;
+        if (WaypointManager.INSTANCE.getOriginal(waypoint) != null) {
+            count++;
+        }
+        return canTeleport(waypoint) ? count + 1 : count;
     }
 
-    /** The card's buttons, from the right: delete, edit, share, copy, on the map and teleport; faded in by lit. */
+    /**
+     * The card's buttons, from the right: delete, edit, share with the team, share in the chat, copy, on the map and
+     * teleport; for a teammate's waypoint saving it as an own one instead of the first three, and for such a copy
+     * going to the waypoint it was made of. Faded in by lit.
+     */
     private void drawActions(final Waypoint waypoint, int right, int y, int mouseX, int mouseY, double lit,
         int background) {
         int x = right - ACTION_SIZE;
-        boolean pending = isPendingDelete(waypoint);
-        action(
-            x,
-            y,
-            Icons.SMALL_TRASH,
-            pending ? Theme.TEXT : Theme.DANGER,
-            pending ? Theme.DANGER : 0,
-            lit,
-            background,
-            mouseX,
-            mouseY,
-            () -> confirmDelete(waypoint, () -> WaypointManager.INSTANCE.removeWaypoint(waypoint)),
-            Lang.format(pending ? "wayfarmap.gui.delete_sure" : "wayfarmap.gui.delete"));
-        x -= ACTION_STEP;
-        action(
-            x,
-            y,
-            Icons.SMALL_PENCIL,
-            Theme.TEXT,
-            0,
-            lit,
-            background,
-            mouseX,
-            mouseY,
-            () -> edit(waypoint),
-            Lang.format("wayfarmap.gui.edit"));
-        x -= ACTION_STEP;
+        if (waypoint.isForeign()) {
+            action(x, y, Icons.SMALL_DISK, Theme.SUCCESS, 0, lit, background, mouseX, mouseY, () -> {
+                selected = WaypointManager.INSTANCE.saveAsOwn(waypoint);
+                rebuildRows();
+            }, Lang.format("wayfarmap.gui.save_own_hint"));
+            x -= ACTION_STEP;
+        } else {
+            boolean pending = isPendingDelete(waypoint);
+            action(
+                x,
+                y,
+                Icons.SMALL_TRASH,
+                pending ? Theme.TEXT : Theme.DANGER,
+                pending ? Theme.DANGER : 0,
+                lit,
+                background,
+                mouseX,
+                mouseY,
+                () -> confirmDelete(waypoint, () -> WaypointManager.INSTANCE.removeWaypoint(waypoint)),
+                Lang.format(pending ? "wayfarmap.gui.delete_sure" : "wayfarmap.gui.delete"));
+            x -= ACTION_STEP;
+            action(
+                x,
+                y,
+                Icons.SMALL_PENCIL,
+                Theme.TEXT,
+                0,
+                lit,
+                background,
+                mouseX,
+                mouseY,
+                () -> edit(waypoint),
+                Lang.format("wayfarmap.gui.edit"));
+            x -= ACTION_STEP;
+            if (canShare(waypoint)) {
+                final boolean shared = waypoint.isShared();
+                action(
+                    x,
+                    y,
+                    Icons.SMALL_PERSON,
+                    shared ? Theme.TEXT : Theme.TEXT_MUTED,
+                    shared ? Theme.ACCENT_DIM : 0,
+                    lit,
+                    background,
+                    mouseX,
+                    mouseY,
+                    () -> {
+                        WaypointManager.setShared(waypoint, !shared);
+                        WaypointManager.INSTANCE.waypointChanged();
+                    },
+                    Lang.format(shared ? "wayfarmap.gui.team_share_off" : "wayfarmap.gui.team_share_on"));
+                x -= ACTION_STEP;
+            }
+            final Waypoint original = WaypointManager.INSTANCE.getOriginal(waypoint);
+            if (original != null) {
+                action(
+                    x,
+                    y,
+                    Icons.SMALL_PIN,
+                    0xFFF2C14E,
+                    0,
+                    lit,
+                    background,
+                    mouseX,
+                    mouseY,
+                    () -> reveal(original),
+                    Lang.format("wayfarmap.gui.go_original"));
+                x -= ACTION_STEP;
+            }
+        }
         action(
             x,
             y,

@@ -49,6 +49,8 @@ import cpw.mods.fml.common.network.simpleimpl.IMessage;
  * and every dimension the team explored can be looked at right away.
  * <p>
  * Stored in {@code <world>/wayfarmap/teams/<team>/dim<id>/<surface|caveN>/r.X.Z.bin}, one file per 32x32 chunks.
+ * <p>
+ * The waypoints teammates share with each other go through here too, to {@link TeamWaypointServer}.
  */
 public final class TeamMapServer {
 
@@ -87,6 +89,9 @@ public final class TeamMapServer {
     private final Queue<Object[]> inbox = new ConcurrentLinkedQueue<>();
     /** Players whose client has the mod (said hello). */
     private final Set<UUID> capable = new HashSet<>();
+    /** Those of them whose client knows team waypoints. */
+    private final Set<UUID> waypointCapable = new HashSet<>();
+    private final TeamWaypointServer waypoints = new TeamWaypointServer(this);
     private final Map<String, TeamStore> teams = new HashMap<>();
     private final Map<UUID, Sync> syncs = new HashMap<>();
     private final Map<UUID, int[]> uploadBudget = new HashMap<>();
@@ -141,7 +146,12 @@ public final class TeamMapServer {
             EntityPlayerMP player = (EntityPlayerMP) entry[0];
             try {
                 if (entry[1] instanceof ShareNetwork.Hello) {
-                    onHello(player);
+                    onHello(player, (ShareNetwork.Hello) entry[1]);
+                } else if (entry[1] instanceof ShareNetwork.Waypoints) {
+                    String team = knownTeams.get(player.getUniqueID());
+                    if (team != null && !team.isEmpty() && waypointCapable.contains(player.getUniqueID())) {
+                        waypoints.receive(player, team, (ShareNetwork.Waypoints) entry[1]);
+                    }
                 } else if (entry[1] instanceof ShareNetwork.Chunks) {
                     onUpload(player, (ShareNetwork.Chunks) entry[1]);
                 }
@@ -163,6 +173,7 @@ public final class TeamMapServer {
                 store.save(false);
                 store.unloadIdle(now);
             }
+            waypoints.save();
         }
     }
 
@@ -174,6 +185,7 @@ public final class TeamMapServer {
         UUID id = event.player.getUniqueID();
         finishSync(id);
         capable.remove(id);
+        waypointCapable.remove(id);
         uploadBudget.remove(id);
         knownTeams.remove(id);
         toldAlone.remove(id);
@@ -194,9 +206,11 @@ public final class TeamMapServer {
         } catch (Exception e) {
             WayFarMap.LOG.warn("Team map: saving took too long", e);
         }
+        waypoints.stop();
         teams.clear();
         syncs.clear();
         capable.clear();
+        waypointCapable.clear();
         knownTeams.clear();
         inbox.clear();
         root = null;
@@ -204,13 +218,42 @@ public final class TeamMapServer {
 
     // ---------------------------------------------------------------- messages
 
-    private void onHello(EntityPlayerMP player) {
+    private void onHello(EntityPlayerMP player, ShareNetwork.Hello hello) {
         capable.add(player.getUniqueID());
+        if (hello.protocol >= ShareNetwork.WAYPOINTS_PROTOCOL) {
+            waypointCapable.add(player.getUniqueID());
+        }
         String team = SuTeams.teamId(player);
         knownTeams.put(player.getUniqueID(), team == null ? "" : team);
         // The client learns its team: with one it starts uploading the map it already has.
         ShareNetwork.sendTo(new ShareNetwork.Hello(team), player);
         startSync(player);
+        sendWaypoints(player, team);
+    }
+
+    private void sendWaypoints(EntityPlayerMP player, String team) {
+        if (team != null && waypointCapable.contains(player.getUniqueID())) {
+            waypoints.sendAll(player, team);
+        }
+    }
+
+    /** To the online members of a team whose client knows team waypoints, but for one of them. */
+    void sendToTeam(String teamId, UUID except, IMessage message) {
+        for (Object o : MinecraftServer.getServer()
+            .getConfigurationManager().playerEntityList) {
+            EntityPlayerMP player = (EntityPlayerMP) o;
+            UUID id = player.getUniqueID();
+            if (!id.equals(except) && waypointCapable.contains(id) && teamId.equals(knownTeams.get(id))) {
+                ShareNetwork.sendTo(message, player);
+            }
+        }
+    }
+
+    File teamDirectory(String teamId) {
+        if (root == null) {
+            root = new File(DimensionManager.getCurrentSaveRootDirectory(), "wayfarmap/teams");
+        }
+        return new File(root, teamId);
     }
 
     /** Players last told they have no teammates online, so the empty list isn't sent again and again. */
@@ -262,11 +305,17 @@ public final class TeamMapServer {
             }
             String team = SuTeams.teamId(player);
             String current = team == null ? "" : team;
-            if (!current.equals(knownTeams.get(id))) {
+            String old = knownTeams.get(id);
+            if (!current.equals(old)) {
                 knownTeams.put(id, current);
                 finishSync(id);
+                if (old != null && !old.isEmpty()) {
+                    // What the player shared stays with the player, not with the team left.
+                    waypoints.removeOwner(old, id);
+                }
                 ShareNetwork.sendTo(new ShareNetwork.Hello(team), player);
                 startSync(player);
+                sendWaypoints(player, team);
             }
         }
     }
@@ -440,10 +489,7 @@ public final class TeamMapServer {
     private TeamStore store(String teamId) {
         TeamStore store = teams.get(teamId);
         if (store == null) {
-            if (root == null) {
-                root = new File(DimensionManager.getCurrentSaveRootDirectory(), "wayfarmap/teams");
-            }
-            store = new TeamStore(new File(root, teamId));
+            store = new TeamStore(teamDirectory(teamId));
             teams.put(teamId, store);
         }
         return store;

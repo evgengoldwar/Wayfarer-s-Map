@@ -16,6 +16,24 @@
   A line right under a point carries it on. Comments like this one are left out.
 -->
 
+# 0.0.16
+
+## Waypoints
+- [new] Team waypoints: share a waypoint with your ServerUtilities team (on servers with the mod) from its editor, the list or its menu
+- [new] A waypoint group can share its new waypoints by itself, and all it has with one button
+- [new] A teammate's waypoint is tagged with their name; hide it, or save it as your own to edit it: the copy says whose it is a copy of and leads back to the original
+- [new] Teammates' waypoints can come hidden: for all groups in the settings, or for one group in the list
+
+## Windows
+- [change] "About" window: Navatusein added as a developer
+
+# 0.0.15
+
+## Minimap
+- [new] Own settings apart from the world map: the map shown (2D, without plants, topography, biomes), lighting, mod layers, chunk grid, players and mobs
+- [new] Keys for each of them (unbound by default); a key gives that part of the minimap its own settings
+- [change] Controls: the mod's keys are split into general, world map and minimap
+
 # 0.0.14
 
 ## Windows
@@ -31,11 +49,6 @@
 - [change] The End is lit as by day
 - [new] Copy and paste waypoints on the world map
 - [new] Waypoint list: groups pane, waypoint cards, compass arrows and hover actions
-
-## Minimap
-- [new] Own settings apart from the world map: the map shown (2D, without plants, topography, biomes), lighting, mod layers, chunk grid, players and mobs
-- [new] Keys for each of them (unbound by default); a key gives that part of the minimap its own settings
-- [change] Controls: the mod's keys are split into general, world map and minimap
 
 ## 3D map
 - [change] Block pictures are kept from game to game: the map builds faster

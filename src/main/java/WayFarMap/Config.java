@@ -271,6 +271,8 @@ public class Config {
     public static int waypointLabelMaxWidth = 100;
     public static boolean deathWaypoints = true;
     public static int deathWaypointsKeep = 3;
+    /** Waypoints teammates share are shown as they come; a waypoint group can say otherwise for itself. */
+    public static boolean teamWaypointsShown = true;
 
     public static final List<Option> OPTIONS = new ArrayList<>();
 
@@ -1302,6 +1304,17 @@ public class Config {
             1,
             () -> deathWaypointsKeep,
             v -> deathWaypointsKeep = v);
+        parent(null);
+        group("team");
+        parent(null);
+        bool(
+            c,
+            "teamShown",
+            "Show the waypoints teammates share as soon as they come. Off: they come hidden, to be shown one by one. "
+                + "A waypoint group can be set to do otherwise, in the waypoint list.",
+            true,
+            () -> teamWaypointsShown,
+            v -> teamWaypointsShown = v);
 
         c = CATEGORY_LOGS;
         group("logs");
