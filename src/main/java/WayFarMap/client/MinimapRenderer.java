@@ -33,6 +33,7 @@ import WayFarMap.client.map.Topography;
 import WayFarMap.client.waypoint.Waypoint;
 import WayFarMap.client.waypoint.WaypointManager;
 import WayFarMap.client.waypoint.WaypointRenderer;
+import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 /** Draws the minimap on the HUD, where it was put ({@link Config#minimapX}, {@link Config#minimapY}). */
@@ -53,6 +54,8 @@ public class MinimapRenderer {
     /** Zoom level the label was last shown for, and when it changed. */
     private static int labelZoom = -1;
     private static long zoomChangedAt;
+    /** The minimap was already drawn this frame, under the player list. */
+    private boolean drawnUnderPlayerList;
 
     /** Height of the minimap with the lines of text under it. */
     public static int boxHeight() {
@@ -75,20 +78,52 @@ public class MinimapRenderer {
         return MARGIN + (int) Math.round(Config.minimapY * Math.max(0, screenHeight - 2 * MARGIN - boxHeight()));
     }
 
-    @SubscribeEvent
-    public void onRenderOverlay(RenderGameOverlayEvent.Post event) {
+    /**
+     * While the player list (Tab) is open, the minimap is drawn right before it so the list covers it; this frame's
+     * end of the HUD then skips it. If the list is hidden by another mod (its event canceled), this never runs.
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public void onPlayerList(RenderGameOverlayEvent.Pre event) {
+        if (event.type != RenderGameOverlayEvent.ElementType.PLAYER_LIST || !Config.minimapEnabled) {
+            return;
+        }
+        // The HUD is in another state here than at its end (blend on, alpha test off): the minimap gets the state it
+        // has there, and the list gets its own back.
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT);
         long perf = Perf.start();
         try {
-            drawMinimap(event);
+            GL11.glColor4f(1f, 1f, 1f, 1f);
+            GL11.glDisable(GL11.GL_LIGHTING);
+            GL11.glEnable(GL11.GL_ALPHA_TEST);
+            drawMinimap(event.resolution, event.partialTicks);
+        } finally {
+            Perf.end(Perf.Part.MINIMAP, perf);
+            GL11.glPopAttrib();
+        }
+        drawnUnderPlayerList = true;
+    }
+
+    @SubscribeEvent
+    public void onRenderOverlay(RenderGameOverlayEvent.Post event) {
+        if (event.type != RenderGameOverlayEvent.ElementType.ALL) {
+            return;
+        }
+        if (drawnUnderPlayerList) {
+            drawnUnderPlayerList = false;
+            return;
+        }
+        if (!Config.minimapEnabled) {
+            return;
+        }
+        long perf = Perf.start();
+        try {
+            drawMinimap(event.resolution, event.partialTicks);
         } finally {
             Perf.end(Perf.Part.MINIMAP, perf);
         }
     }
 
-    private void drawMinimap(RenderGameOverlayEvent.Post event) {
-        if (event.type != RenderGameOverlayEvent.ElementType.ALL || !Config.minimapEnabled) {
-            return;
-        }
+    private void drawMinimap(ScaledResolution resolution, float partialTicks) {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.currentScreen instanceof GuiMinimapPosition) {
             // Being dragged: moved to the mouse right before it is drawn, so it keeps up with the cursor.
@@ -104,10 +139,10 @@ public class MinimapRenderer {
 
         List<String> lines = lines(mc);
         shownLines = lines.size();
-        int x = left(event.resolution.getScaledWidth());
-        int y = top(event.resolution.getScaledHeight());
-        int factor = event.resolution.getScaleFactor();
-        draw(mc, dimension, lines, x, y, event.partialTicks, factor, x * factor, y * factor, false);
+        int x = left(resolution.getScaledWidth());
+        int y = top(resolution.getScaledHeight());
+        int factor = resolution.getScaleFactor();
+        draw(mc, dimension, lines, x, y, partialTicks, factor, x * factor, y * factor, false);
     }
 
     /**
