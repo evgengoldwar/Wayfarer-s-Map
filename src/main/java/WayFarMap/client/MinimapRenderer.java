@@ -26,6 +26,7 @@ import WayFarMap.client.integration.ChargersLayer;
 import WayFarMap.client.integration.ClaimsLayer;
 import WayFarMap.client.integration.CoverageDrawer;
 import WayFarMap.client.integration.DronesLayer;
+import WayFarMap.client.integration.GuardsLayer;
 import WayFarMap.client.integration.Mods;
 import WayFarMap.client.integration.PowerfailLayer;
 import WayFarMap.client.integration.ProspectingLayer;
@@ -508,6 +509,12 @@ public class MinimapRenderer {
                 Mods.draw(
                     Mods.Addon.THAUMCRAFT_NODES,
                     () -> ThaumcraftNodes
+                        .draw(mc.theWorld.provider.dimensionId, px, pz, scale, 0, 0, inner, inner, true, 0, 0));
+            }
+            if (Config.guards(true) && Mods.isGuardsAvailable()) {
+                Mods.draw(
+                    Mods.Addon.GUARDS,
+                    () -> GuardsLayer
                         .draw(mc.theWorld.provider.dimensionId, px, pz, scale, 0, 0, inner, inner, true, 0, 0));
             }
             if (Config.drones(true) && Mods.isDronesAvailable()) {

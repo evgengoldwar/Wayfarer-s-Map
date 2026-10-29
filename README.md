@@ -23,7 +23,7 @@
 
 ---
 
-Wayfarer's Map draws everything you have **already seen**: a minimap in the corner of the screen, a fullscreen world map, an isometric **3D map like Dynmap**, waypoints, caves, biomes and topography — plus first-class layers for **GregTech ore veins, underground fluids, power failures, ServerUtilities claims, Thaumcraft nodes, AE2 wireless coverage, wireless chargers and drone centres**.
+Wayfarer's Map draws everything you have **already seen**: a minimap in the corner of the screen, a fullscreen world map, an isometric **3D map like Dynmap**, waypoints, caves, biomes and topography — plus first-class layers for **GregTech ore veins, underground fluids, power failures, ServerUtilities claims, Thaumcraft nodes, AE2 wireless coverage, wireless chargers, drone centres and mob protection**.
 
 It is **client-side**: the map is built from the chunks your client loads, so it works on any server. Install it on the server as well to unlock the shared **team map**, live teammate positions and `/wf chunkload`.
 
@@ -89,6 +89,7 @@ All integrations are **optional** — buttons appear only when the mod is instal
 | 📡 **[Applied Energistics 2](https://github.com/GTNewHorizons/Applied-Energistics-2-Unofficial)** | **Wireless coverage** — a circle around each wireless access point where the wireless terminal reaches it, at your height and at the full range. With the mod on the server: your networks' access points with their exact range; without it: those seen nearby, the range learned when you open one. |
 | 🔋 **GregTech** and **[EnderIO](https://github.com/GTNewHorizons/EnderIO)** wireless chargers | **Charging range** of each wireless charger, at your height and at the full range. A GregTech charger's mode is known to the server only: without the mod there the range of every mode is shown until you right-click the charger. |
 | 🛸 **GregTech** Drone Centre | **Range** of each drone centre, where it reaches the drone downlink modules, by its drone's level. |
+| 🔦 **GregTech** Monster Repellator, **Extra Utilities** Magnum Torch and Chandelier | **Mob protection**: where monsters don't spawn around each. A repellator's power is known to the server only: without the mod there its range without power is shown. |
 
 ## 👥 Team map
 
@@ -141,7 +142,7 @@ All keys can be rebound in **Options → Controls → Wayfarer's Map**.
 
 <br>
 
-Map view (2D, 2D without plants, topography, biomes) · ore veins · underground fluids · claims · power failures · Thaumcraft nodes · AE2 wireless coverage · wireless chargers · drone centres · chunk grid · hostile / neutral / ambient / friendly mobs · pets · players · lighting (auto / day / night).
+Map view (2D, 2D without plants, topography, biomes) · ore veins · underground fluids · claims · power failures · Thaumcraft nodes · AE2 wireless coverage · wireless chargers · drone centres · mob protection · chunk grid · hostile / neutral / ambient / friendly mobs · pets · players · lighting (auto / day / night).
 
 Each of them also has a **minimap-only** key, under *Wayfarer's Map: Minimap*: pressing one gives that part of the minimap its own setting, apart from the world map.
 
@@ -162,6 +163,7 @@ Every option is available in game from the **gear button** on the world map, gro
 ├── ae2_wireless.json      # AE2 wireless access points seen without the mod on the server
 ├── chargers.json          # wireless chargers you have seen
 ├── drones.json            # drone centres you have seen
+├── guards.json            # repellators, magnum torches and chandeliers you have seen
 └── dim<id>/
     ├── r.X.Z.png          # 2D map regions, 512×512 blocks each
     ├── caves/<layer>/     # cave layers

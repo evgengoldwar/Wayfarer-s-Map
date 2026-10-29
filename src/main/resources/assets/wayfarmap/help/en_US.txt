@@ -201,6 +201,16 @@ Turned on with the §bDrone centres§r checkbox in the §bMod layers§r menu: a 
 - Hover a circle — it is outlined in a lighter shade of its color, with whose it is by the cursor; hover the icon in the middle — coordinates, range, the range at your height and the state
 - The thin ring can be turned off: settings → §bMod layers§r → §bDrone centres§r → §bFull range ring§r
 
+# {icon:guards} Mob protection (GregTech, Extra Utilities)
+Turned on with the §bMob protection§r checkbox in the §bMod layers§r menu: a circle around each block that keeps monsters from spawning, drawn like the AE2 coverage (filled at your height, a thin ring at the full range): the GregTech §aMonster Repellator§r, the Extra Utilities §6Magnum Torch§r and §eChandelier§r, each with its icon in the middle (a §cred warning triangle§r by a repellator switched off or without power).
+
+- Only natural spawns of monsters are stopped: spawners and cursed earth keep working
+- §fMonster Repellator§r: a sphere, 16 + 48 × tier blocks with power (LV — 64), 4 + 12 × tier without; switched off — §cred§r, no protection. The client doesn't know the energy: without the mod on the server the circle is the range without power, §7gray§r; with the mod there — the range in force
+- §fMagnum Torch§r: 128 blocks around but only 32 up and down, so at another height its circle is smaller or gone; §fChandelier§r: 16 blocks every way. A torch placed in a microblock doesn't protect and isn't shown
+- Only the blocks you have seen are shown
+- Hover a circle — it is outlined in a lighter shade of its color, with whose it is by the cursor; hover the icon in the middle — coordinates, range, the range at your height and the state
+- The thin ring can be turned off: settings → §bMod layers§r → §bMob protection§r → §bFull range ring§r
+
 # {icon:claims} Claims (ServerUtilities)
 Needs §fServerUtilities§r and §fNavigator§r on the server. Turn on the §bClaims§r checkbox in the §bMod layers§r menu.
 

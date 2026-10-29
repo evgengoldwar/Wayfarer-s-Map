@@ -335,6 +335,8 @@ public class GuiHelp extends ScaledScreen {
                 return 0xFFFFB300;
             case "drones":
                 return 0xFF1DE9B6;
+            case "guards":
+                return 0xFF76FF03;
             case "claims":
                 return 0xFFF2C14E;
             case "team":
@@ -383,6 +385,8 @@ public class GuiHelp extends ScaledScreen {
                 return Icons.CHARGER;
             case "drones":
                 return Icons.DRONE;
+            case "guards":
+                return Icons.REPELLATOR;
             case "claims":
                 return Icons.CLAIM;
             case "team":

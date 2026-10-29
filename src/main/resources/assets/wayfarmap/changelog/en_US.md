@@ -16,6 +16,12 @@
   A line right under a point carries it on. Comments like this one are left out.
 -->
 
+# 0.0.21
+
+## Coverage zones
+- [new] Mob protection (GregTech, Extra Utilities): where monsters don't spawn around a Monster Repellator (green), a Magnum Torch (orange, 128 blocks around but only 32 up and down) and a Chandelier (yellow). Switched off — red. A repellator's energy is known only to the server: without the mod there its circle is the range without power, gray. Only the blocks you have seen are shown
+  - The thin ring can be turned off: settings → Mod layers → Mob protection → Full range ring
+
 # 0.0.20
 
 ## Coverage zones

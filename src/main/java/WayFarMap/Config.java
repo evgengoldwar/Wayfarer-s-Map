@@ -110,7 +110,8 @@ public class Config {
         MINIMAP_VIEW_BIOMES = 3;
     public static int minimapView = MINIMAP_VIEW_FLAT, minimapLightMode = LIGHT_AUTO;
     public static boolean minimapOreVeins = true, minimapUndergroundFluids, minimapClaims, minimapPowerfails = true,
-        minimapThaumcraftNodes = true, minimapWireless = true, minimapChargers = true, minimapDrones = true;
+        minimapThaumcraftNodes = true, minimapWireless = true, minimapChargers = true, minimapDrones = true,
+        minimapGuards = true;
     public static boolean minimapChunkGrid;
     public static boolean minimapPlayers = true, minimapHostileMobs = true, minimapPassiveMobs = true,
         minimapAmbientMobs = true, minimapOtherEntities = true, minimapPets = true;
@@ -239,6 +240,8 @@ public class Config {
     public static boolean showChargers = true, chargersFullRange = true;
     /** GregTech's drone centres (only used when GregTech has them), and their full range ring. */
     public static boolean showDrones = true, dronesFullRange = true;
+    /** Monster Repellators and Magnum Torches (only used when either is installed), and their full range ring. */
+    public static boolean showGuards = true, guardsFullRange = true;
     /** Share the explored map with the ServerUtilities team (where the server has the mod). */
     public static boolean shareMapWithTeam = true;
     public static boolean useTextureColors = true;
@@ -540,6 +543,13 @@ public class Config {
             true,
             () -> minimapDrones,
             v -> minimapDrones = v);
+        bool(
+            c,
+            "layerGuards",
+            "Monster Repellators, Magnum Torches and Chandeliers on the minimap.",
+            true,
+            () -> minimapGuards,
+            v -> minimapGuards = v);
         tab(null);
         group("ownGrid");
         parent("enabled");
@@ -1099,6 +1109,25 @@ public class Config {
             () -> dronesFullRange,
             v -> dronesFullRange = v);
         parent(null);
+        group("guards");
+        bool(
+            c,
+            "guards",
+            "Show where GregTech Monster Repellators and Extra Utilities Magnum Torches and Chandeliers keep monsters "
+                + "from spawning, on the maps (if either is installed).",
+            true,
+            () -> showGuards,
+            v -> showGuards = v);
+        parent("guards");
+        bool(
+            c,
+            "guardsFullRange",
+            "A thin ring of the full range around the circles of mob protection, besides the filled slice at the "
+                + "player's height.",
+            true,
+            () -> guardsFullRange,
+            v -> guardsFullRange = v);
+        parent(null);
         tab(TAB_MAP_2D);
         group("data");
         parent(null);
@@ -1616,7 +1645,8 @@ public class Config {
             "thaumcraftNodes",
             "wireless",
             "chargers",
-            "drones");
+            "drones",
+            "guards");
         hideFromSettings(
             CATEGORY_ENTITIES,
             "showOtherPlayers",
@@ -1722,6 +1752,11 @@ public class Config {
 
     public static void toggleDrones() {
         showDrones = !showDrones;
+        save();
+    }
+
+    public static void toggleGuards() {
+        showGuards = !showGuards;
         save();
     }
 
@@ -1881,6 +1916,10 @@ public class Config {
         return minimap && minimapOwnLayers ? minimapDrones : showDrones;
     }
 
+    public static boolean guards(boolean minimap) {
+        return minimap && minimapOwnLayers ? minimapGuards : showGuards;
+    }
+
     public static boolean chargers(boolean minimap) {
         return minimap && minimapOwnLayers ? minimapChargers : showChargers;
     }
@@ -1935,6 +1974,7 @@ public class Config {
             minimapWireless = showWireless;
             minimapChargers = showChargers;
             minimapDrones = showDrones;
+            minimapGuards = showGuards;
             minimapOwnLayers = true;
         }
     }

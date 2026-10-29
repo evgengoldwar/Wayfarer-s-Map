@@ -12,6 +12,7 @@ import org.lwjgl.opengl.GL11;
 import WayFarMap.WayFarMap;
 import WayFarMap.share.Chargers;
 import WayFarMap.share.DroneCentres;
+import WayFarMap.share.MobGuards;
 import cpw.mods.fml.common.Loader;
 
 /**
@@ -27,7 +28,7 @@ public final class Mods {
     private static Boolean claims;
     private static Boolean thaumcraftNodes;
     private static Boolean ae2;
-    private static boolean chargersBroken, dronesBroken;
+    private static boolean chargersBroken, dronesBroken, guardsBroken;
     /** Set when drawing GregTech power failures failed: the layer is off for the rest of the session. */
     private static boolean powerfailsBroken;
 
@@ -87,6 +88,11 @@ public final class Mods {
         return !dronesBroken && DroneCentres.isAvailable();
     }
 
+    /** GregTech's Monster Repellator or Extra Utilities' Magnum Torch; see {@link GuardsLayer}. */
+    public static boolean isGuardsAvailable() {
+        return !guardsBroken && MobGuards.isAvailable();
+    }
+
     private static Boolean nodeLayerDelete;
 
     /**
@@ -127,7 +133,8 @@ public final class Mods {
         POWERFAILS,
         AE2_WIRELESS,
         CHARGERS,
-        DRONES
+        DRONES,
+        GUARDS
     }
 
     private static final Set<Addon> FAILED = new HashSet<>();
@@ -172,6 +179,9 @@ public final class Mods {
                 break;
             case DRONES:
                 dronesBroken = true;
+                break;
+            case GUARDS:
+                guardsBroken = true;
                 break;
         }
         if (FAILED.add(addon)) {

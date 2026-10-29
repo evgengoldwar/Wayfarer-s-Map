@@ -20,10 +20,12 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 
 /**
- * Server side of the wireless chargers and drone centres layers. The server tells only about machines the client has
+ * Server side of the wireless chargers, drone centres and mob protection layers. The server tells only about machines
+ * the client has
  * seen itself: the client sends where they are ({@link ShareNetwork.MachineAsk}) and gets, every couple of seconds,
  * what only the server knows about those of them in loaded chunks: a GregTech charger's mode and whether it charges
- * this player, the drone level on GregTech versions that don't send it, the energy. Nothing else is looked at, so no
+ * this player, the drone level on GregTech versions that don't send it, a Monster Repellator's range in force, the
+ * energy. Nothing else is looked at, so no
  * machine the player hasn't found is revealed, and no pass over all tile entities is needed.
  * <p>
  * A client that says {@link ShareNetwork#MACHINES_PROTOCOL} in its hello gets an empty list of each layer the server
@@ -36,7 +38,7 @@ public final class MachineServer {
     private static final int INTERVAL_TICKS = 40;
 
     public static boolean isActive() {
-        return chargers() || drones();
+        return chargers() || drones() || MobGuards.isRepellatorAvailable();
     }
 
     private static boolean chargers() {
@@ -100,6 +102,9 @@ public final class MachineServer {
                 if (drones()) {
                     ShareNetwork.sendTo(new ShareNetwork.MachineList(ShareNetwork.MachineList.DRONES), player);
                 }
+                if (MobGuards.isRepellatorAvailable()) {
+                    ShareNetwork.sendTo(new ShareNetwork.MachineList(ShareNetwork.MachineList.GUARDS), player);
+                }
             } else {
                 ShareNetwork.MachineAsk ask = (ShareNetwork.MachineAsk) entry[1];
                 List<int[]>[] layers = asked.get(id);
@@ -155,6 +160,23 @@ public final class MachineServer {
             }
             if (layer == ShareNetwork.MachineList.CHARGERS) {
                 charger(list, player, tile, p[0], enderIoRange);
+            } else if (layer == ShareNetwork.MachineList.GUARDS) {
+                Object repellator = MobGuards.repellator(tile);
+                if (repellator != null) {
+                    int tier = MobGuards.tier(repellator), range = MobGuards.rangeInForce(repellator);
+                    boolean powered = range > 0 && range == MobGuards.repellatorRange(tier, true);
+                    list.points.add(
+                        new MachinePoint(
+                            MobGuards.KIND_REPELLATOR,
+                            p[0],
+                            tile.xCoord,
+                            tile.yCoord,
+                            tile.zCoord,
+                            tier,
+                            powered ? 1 : 0,
+                            Math.max(0, range),
+                            range > 0));
+                }
             } else {
                 Object centre = DroneCentres.centre(tile);
                 if (centre != null) {

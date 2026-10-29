@@ -53,6 +53,7 @@ import WayFarMap.client.integration.ClaimsLayer;
 import WayFarMap.client.integration.CoverageDrawer;
 import WayFarMap.client.integration.CoverageHover;
 import WayFarMap.client.integration.DronesLayer;
+import WayFarMap.client.integration.GuardsLayer;
 import WayFarMap.client.integration.Mods;
 import WayFarMap.client.integration.PowerfailLayer;
 import WayFarMap.client.integration.ProspectingLayer;
@@ -405,7 +406,8 @@ public class GuiWorldMap extends ScaledScreen {
             || Mods.isThaumcraftNodesAvailable()
             || Mods.isAe2Loaded()
             || Mods.isChargersAvailable()
-            || Mods.isDronesAvailable())) {
+            || Mods.isDronesAvailable()
+            || Mods.isGuardsAvailable())) {
             addonsButton = new IconButton(ID_ADDONS, x, 4, Icons.ADDONS, Lang.format("wayfarmap.gui.addons"));
             addonsButton.iconColor = COLOR_ADDONS;
             addIconButton(addonsButton, x);
@@ -490,6 +492,12 @@ public class GuiWorldMap extends ScaledScreen {
                 addonToggle("wayfarmap.gui.drones", Config.showDrones, Config::toggleDrones).icon(Icons.DRONE)
                     .iconColor(0xFF1DE9B6)
                     .key("drones"));
+        }
+        if (Mods.isGuardsAvailable()) {
+            entries.add(
+                addonToggle("wayfarmap.gui.guards", Config.showGuards, Config::toggleGuards).icon(Icons.REPELLATOR)
+                    .iconColor(0xFF76FF03)
+                    .key("guards"));
         }
         menu = entries;
         menuKind = MENU_ADDONS;
@@ -711,6 +719,15 @@ public class GuiWorldMap extends ScaledScreen {
                 () -> Config.showDrones,
                 Config::toggleDrones);
         }
+        if (Mods.isGuardsAvailable()) {
+            addLayer(
+                Icons.REPELLATOR,
+                0xFF76FF03,
+                "wayfarmap.gui.guards",
+                "guards",
+                () -> Config.showGuards,
+                Config::toggleGuards);
+        }
         int step = 19;
         int y = (HEADER_HEIGHT + height - FOOTER_HEIGHT) / 2 - (layerButtons.size() * step - 3) / 2;
         for (LayerButton layer : layerButtons) {
@@ -862,6 +879,10 @@ public class GuiWorldMap extends ScaledScreen {
 
     private static boolean dronesShown() {
         return Config.showDrones && Mods.isDronesAvailable();
+    }
+
+    private static boolean guardsShown() {
+        return Config.showGuards && Mods.isGuardsAvailable();
     }
 
     private static boolean chargersShown() {
@@ -1065,7 +1086,8 @@ public class GuiWorldMap extends ScaledScreen {
                 || nodesShown()
                 || wirelessShown()
                 || chargersShown()
-                || dronesShown();
+                || dronesShown()
+                || guardsShown();
         }
     }
 
@@ -1631,6 +1653,12 @@ public class GuiWorldMap extends ScaledScreen {
                 () -> ThaumcraftNodes
                     .draw(dimensionId, centerX, centerZ, scale, 0, 0, width, height, false, mouseX, mouseY));
         }
+        if (guardsShown()) {
+            Mods.draw(
+                Mods.Addon.GUARDS,
+                () -> GuardsLayer
+                    .draw(dimensionId, centerX, centerZ, scale, 0, 0, width, height, false, mouseX, mouseY));
+        }
         if (dronesShown()) {
             Mods.draw(
                 Mods.Addon.DRONES,
@@ -1839,6 +1867,9 @@ public class GuiWorldMap extends ScaledScreen {
                     }
                     if (tooltip == null && dronesShown()) {
                         tooltip = DronesLayer.getHoveredTooltip(area);
+                    }
+                    if (tooltip == null && guardsShown()) {
+                        tooltip = GuardsLayer.getHoveredTooltip(area);
                     }
                 }
                 if (tooltip == null && prospecting && Config.showOreVeins) {

@@ -38,7 +38,8 @@ public final class ShareNetwork {
     /** 4: AE2 wireless access points ({@link Wireless}), sent only to clients that say at least that. */
     public static final int WIRELESS_PROTOCOL = 4;
     /**
-     * 5: wireless chargers and drone centres the client has seen ({@link MachineAsk}, {@link MachineList}), only with
+     * 5: wireless chargers, drone centres and Monster Repellators the client has seen ({@link MachineAsk},
+     * {@link MachineList}), only with
      * clients that say at least that.
      */
     public static final int MACHINES_PROTOCOL = 5;
@@ -754,7 +755,7 @@ public final class ShareNetwork {
      */
     public static final class MachineList implements IMessage {
 
-        public static final int CHARGERS = 0, DRONES = 1, LAYERS = 2;
+        public static final int CHARGERS = 0, DRONES = 1, GUARDS = 2, LAYERS = 3;
 
         public int layer;
         public final List<MachinePoint> points = new ArrayList<>(), foreign = new ArrayList<>();
