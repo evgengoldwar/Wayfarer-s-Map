@@ -61,7 +61,9 @@ import WayFarMap.client.integration.ThaumcraftNodes;
 import WayFarMap.client.integration.WirelessLayer;
 import WayFarMap.client.map.BiomeHighlight;
 import WayFarMap.client.map.ChunkLoadClient;
+import WayFarMap.client.map.ChunkLoadMissing;
 import WayFarMap.client.map.ChunkLoadView;
+import WayFarMap.client.map.JourneyMapImport;
 import WayFarMap.client.map.MapCleaner;
 import WayFarMap.client.map.MapDimension;
 import WayFarMap.client.map.MapManager;
@@ -84,6 +86,8 @@ public class GuiWorldMap extends ScaledScreen {
 
     /** Zoom level is kept between openings of the map. */
     private static int zoomIndex = DEFAULT_ZOOM;
+    /** H hides the waypoints from this map and shows them again; kept while the game runs. */
+    private static boolean waypointsHidden;
 
     private static final int HEADER_HEIGHT = 24;
     private static final int FOOTER_HEIGHT = 14;
@@ -99,7 +103,7 @@ public class GuiWorldMap extends ScaledScreen {
     private static final int MENU_WIDTH = 130, TEAM_MENU_WIDTH = 190, MENU_ROW = 14;
     private static final String[] CAVE_MODE_KEYS = { "auto", "off", "on" };
     /** Lang key suffixes of {@link Config#gridStyle} values. */
-    private static final String[] GRID_STYLE_KEYS = { "default", "regions" };
+    private static final String[] GRID_STYLE_KEYS = { "default", "regions", "chunks" };
     /** Lang key suffixes of {@link Config#mapLightMode} values. */
     private static final String[] LIGHT_MODE_KEYS = { "auto", "day", "night" };
 
@@ -1062,8 +1066,10 @@ public class GuiWorldMap extends ScaledScreen {
         modesButton.tooltip = Lang.format("wayfarmap.gui.modes") + ": "
             + Lang.format("wayfarmap.gui.modes." + MODE_KEYS[mode]);
         gridButton.active = Config.chunkGrid;
-        gridButton.badge = Config.chunkGrid && Config.gridStyle == Config.GRID_REGIONS ? Theme.ACCENT : 0;
-        String gridStyle = GRID_STYLE_KEYS[Config.gridStyle == Config.GRID_REGIONS ? 1 : 0];
+        gridButton.badge = Config.chunkGrid && Config.gridStyle != Config.GRID_DEFAULT ? Theme.ACCENT : 0;
+        String gridStyle = GRID_STYLE_KEYS[Config.gridStyle >= 0 && Config.gridStyle < GRID_STYLE_KEYS.length
+            ? Config.gridStyle
+            : 0];
         gridButton.tooltip = Lang.format("wayfarmap.gui.grid") + ": "
             + Lang.format(
                 Config.chunkGrid ? "wayfarmap.option.map.gridStyle." + gridStyle : "wayfarmap.option.map.caveMode.off");
@@ -1445,6 +1451,32 @@ public class GuiWorldMap extends ScaledScreen {
         welcomeWindow.draw(width, height, mouseX, mouseY);
     }
 
+    // ---------------------------------------------------------------- JourneyMap copy notice
+
+    /**
+     * What was copied from JourneyMap into this world's map ({@link JourneyMapImport#takeNotice}), shown in a window
+     * after the welcome window until closed; null when nothing is shown.
+     */
+    private ImportNoticeWindow importNotice;
+    /** The notice was looked for while this map was open (it is told once). */
+    private boolean importChecked;
+
+    /** After the welcome window (if it shows), the notice of what was copied from JourneyMap, once. */
+    private void checkImportNotice() {
+        if (!importChecked && !welcome) {
+            importChecked = true;
+            Object[] notice = JourneyMapImport.takeNotice(MapManager.INSTANCE.getWorldDirectory());
+            if (notice != null) {
+                importNotice = new ImportNoticeWindow(
+                    fontRendererObj,
+                    (Integer) notice[0],
+                    (Integer) notice[1],
+                    (String) notice[2],
+                    JourneyMapImport.GROUP);
+            }
+        }
+    }
+
     /** Whether the world map is on screen: open, or drawn behind one of the mod's screens opened over it. */
     public static boolean isVisible(Minecraft mc) {
         GuiScreen screen = mc.currentScreen;
@@ -1480,10 +1512,14 @@ public class GuiWorldMap extends ScaledScreen {
             }
             return;
         }
+        checkImportNotice();
         // Under the welcome window likewise: map tooltips are drawn high and would show through it.
-        drawMap(welcome ? NO_MOUSE : mouseX, welcome ? NO_MOUSE : mouseY, partialTicks);
+        boolean covered = welcome || importNotice != null;
+        drawMap(covered ? NO_MOUSE : mouseX, covered ? NO_MOUSE : mouseY, partialTicks);
         if (welcome) {
             drawWelcome(mouseX, mouseY);
+        } else if (importNotice != null) {
+            importNotice.draw(width, height, mouseX, mouseY);
         }
     }
 
@@ -1547,7 +1583,9 @@ public class GuiWorldMap extends ScaledScreen {
                 8f,
                 true,
                 iso && !otherDimension && IsoEntityDrawer.drawsPlayers());
-            drawWaypoints(mouseX, mouseY);
+            if (!waypointsHidden) {
+                drawWaypoints(mouseX, mouseY);
+            }
         }
 
         double px = mc.thePlayer.prevPosX + (mc.thePlayer.posX - mc.thePlayer.prevPosX) * partialTicks;
@@ -1770,7 +1808,10 @@ public class GuiWorldMap extends ScaledScreen {
         String exportStatus = MapExport.statusText();
         exportButton.active = exportStatus != null;
         // An area being loaded with /wf chunkload: how far it got, and the time left.
-        String loadStatus = ChunkLoadClient.INSTANCE.statusText();
+        String loadStatus = ChunkLoadMissing.statusText();
+        if (loadStatus == null) {
+            loadStatus = ChunkLoadClient.INSTANCE.statusText();
+        }
         // On the right, by the help button: what is going on, or a note on the view.
         String right = null;
         int rightColor = Theme.TEXT_MUTED;
@@ -1781,6 +1822,8 @@ public class GuiWorldMap extends ScaledScreen {
             // The area loading view has its own progress bar.
             right = loadStatus;
             rightColor = Theme.ACCENT;
+        } else if (waypointsHidden) {
+            right = Lang.format("wayfarmap.gui.waypoints_hidden");
         } else if (iso) {
             right = Lang.format("wayfarmap.gui.iso_hint");
         } else if (claimsShown() && !chunkloadShown()) {
@@ -3084,8 +3127,8 @@ public class GuiWorldMap extends ScaledScreen {
     }
 
     private Waypoint waypointAt(int mouseX, int mouseY) {
-        if (chunkloadShown()) {
-            // The chunk loading view shows no waypoints.
+        if (chunkloadShown() || waypointsHidden) {
+            // The chunk loading view shows no waypoints, nor the map with them hidden by H.
             return null;
         }
         Waypoint best = null;
@@ -3139,16 +3182,26 @@ public class GuiWorldMap extends ScaledScreen {
             welcomeWindow.scroll(wheel);
             return;
         }
+        if (importNotice != null) {
+            return;
+        }
         if (wheel == 0) {
             return;
         }
-        int newIndex = Math.max(0, Math.min(Config.MAP_ZOOMS.length - 1, zoomIndex + (wheel > 0 ? 1 : -1)));
+        zoomBy(
+            wheel > 0 ? 1 : -1,
+            Mouse.getEventX() * (double) width / mc.displayWidth,
+            height - Mouse.getEventY() * (double) height / mc.displayHeight);
+    }
+
+    /** One zoom step in ({@code step > 0}) or out, keeping the block at that screen point in place. */
+    private void zoomBy(int step, double screenX, double screenY) {
+        int newIndex = Math.max(0, Math.min(Config.MAP_ZOOMS.length - 1, zoomIndex + step));
         if (newIndex == zoomIndex) {
             return;
         }
-        // Keep the block under the cursor in place while zooming.
-        anchorScreenX = Mouse.getEventX() * (double) width / mc.displayWidth;
-        anchorScreenY = height - Mouse.getEventY() * (double) height / mc.displayHeight;
+        anchorScreenX = screenX;
+        anchorScreenY = screenY;
         double[] offset = screenToWorldOffset(anchorScreenX - width / 2.0, anchorScreenY - height / 2.0);
         anchorWorldX = centerX + offset[0];
         anchorWorldZ = centerZ + offset[1];
@@ -3164,6 +3217,12 @@ public class GuiWorldMap extends ScaledScreen {
             // Only its buttons close it; the map waits.
             if (button == 0) {
                 onWelcome(welcomeWindow.click(mouseX, mouseY));
+            }
+            return;
+        }
+        if (importNotice != null) {
+            if (button == 0 && importNotice.click(width, height, mouseX, mouseY)) {
+                importNotice = null;
             }
             return;
         }
@@ -3494,6 +3553,12 @@ public class GuiWorldMap extends ScaledScreen {
                     ChunkLoadView.clearPending(dimension);
                     mc.thePlayer.sendChatMessage("/wf regionload " + (with3d ? "3d" : "2d") + " full");
                 }));
+        // Only the grey chunks: saved in the world, on neither map; those already on it are not loaded again.
+        entries.add(
+            new MenuEntry(
+                Lang.format(with3d ? "wayfarmap.gui.load_missing_3d" : "wayfarmap.gui.load_missing"),
+                ChunkLoadMissing.canStart(),
+                () -> ChunkLoadMissing.start(dimension)));
         entries.add(new MenuEntry(Lang.format("gui.cancel"), true, () -> {}));
         showMenu(entries, MENU_CONFIRM, mouseX, mouseY + 4);
     }
@@ -3916,6 +3981,13 @@ public class GuiWorldMap extends ScaledScreen {
             onWelcome(welcomeWindow.key(keyCode));
             return;
         }
+        if (importNotice != null) {
+            if (keyCode == Keyboard.KEY_ESCAPE || keyCode == Keyboard.KEY_RETURN
+                || keyCode == Keyboard.KEY_NUMPADENTER) {
+                importNotice = null;
+            }
+            return;
+        }
         if (dimensionList != null && keyCode == Keyboard.KEY_ESCAPE) {
             dimensionList = null;
             return;
@@ -3997,6 +4069,29 @@ public class GuiWorldMap extends ScaledScreen {
                 menu = null;
                 ProspectingLayer.toggleDepleted(vein);
             }
+            return;
+        }
+        boolean zoomIn = keyCode == Keyboard.KEY_EQUALS || keyCode == Keyboard.KEY_ADD
+            || typedChar == '+'
+            || keyCode != Keyboard.KEY_NONE && keyCode == KeyHandler.ZOOM_IN.getKeyCode();
+        boolean zoomOut = keyCode == Keyboard.KEY_MINUS || keyCode == Keyboard.KEY_SUBTRACT
+            || typedChar == '-'
+            || keyCode != Keyboard.KEY_NONE && keyCode == KeyHandler.ZOOM_OUT.getKeyCode();
+        if (zoomIn || zoomOut) {
+            // + and - (and the minimap's zoom keys) zoom as the wheel does: towards the cursor, else the middle.
+            double x = Mouse.getX() * (double) width / mc.displayWidth;
+            double y = height - Mouse.getY() * (double) height / mc.displayHeight;
+            if (x < 0 || y < 0 || x > width || y > height) {
+                x = width / 2.0;
+                y = height / 2.0;
+            }
+            zoomBy(zoomIn ? 1 : -1, x, y);
+            return;
+        }
+        if (keyCode == Keyboard.KEY_H) {
+            // Hides the waypoints from this map, or shows them again.
+            waypointsHidden = !waypointsHidden;
+            menu = null;
             return;
         }
         if (isoShown() && (keyCode == Keyboard.KEY_Q || keyCode == Keyboard.KEY_E)) {

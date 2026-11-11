@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -531,6 +532,58 @@ public final class ChunkLoadServer {
         inbox.add(new Object[] { player.getUniqueID(), message });
     }
 
+    /** From the network thread: the map asks which chunks of every region file are saved. */
+    void receive(EntityPlayerMP player, ShareNetwork.SavedScan message) {
+        inbox.add(new Object[] { player.getUniqueID(), message });
+    }
+
+    /** Region files per tick a scan answers ({@link ShareNetwork.SavedScan}): the region cache holds 256 files. */
+    private static final int SCAN_PER_TICK = 16;
+
+    /** Scans of all region files going on, by player: {dimension, regions left, region count}. */
+    private final Map<UUID, Object[]> scans = new HashMap<>();
+
+    /** Starts answering which chunks of every region file of the player's dimension are saved (operators only). */
+    private void startScan(EntityPlayerMP player) {
+        if (!player.canCommandSenderUseCommand(2, "wf")) {
+            player.addChatMessage(new ChatComponentTranslation("wayfarmap.chunkload.not_allowed"));
+            return;
+        }
+        WorldServer world = DimensionManager.getWorld(player.dimension);
+        List<int[]> regions = world == null ? new ArrayList<>() : regionFiles(world);
+        scans.put(player.getUniqueID(), new Object[] { player.dimension, new ArrayDeque<>(regions), regions.size() });
+    }
+
+    /** A few region files of each scan a tick; the end is told once all are answered. */
+    @SuppressWarnings("unchecked")
+    private void continueScans() {
+        java.util.Iterator<Map.Entry<UUID, Object[]>> it = scans.entrySet()
+            .iterator();
+        while (it.hasNext()) {
+            Map.Entry<UUID, Object[]> entry = it.next();
+            EntityPlayerMP player = online(entry.getKey());
+            int dimension = (Integer) entry.getValue()[0];
+            if (player == null || player.dimension != dimension) {
+                it.remove();
+                continue;
+            }
+            WorldServer world = DimensionManager.getWorld(dimension);
+            ArrayDeque<int[]> left = (ArrayDeque<int[]>) entry.getValue()[1];
+            if (world != null) {
+                for (int n = 0; n < SCAN_PER_TICK && !left.isEmpty(); n++) {
+                    int[] region = left.poll();
+                    ShareNetwork.sendTo(savedChunks(world, dimension, region[0], region[1]), player);
+                }
+            } else {
+                left.clear();
+            }
+            if (left.isEmpty()) {
+                it.remove();
+                ShareNetwork.sendTo(new ShareNetwork.SavedScan(dimension, (Integer) entry.getValue()[2]), player);
+            }
+        }
+    }
+
     /** Answers which chunks of the regions are saved in the player's dimension (operators only). */
     private void answerSaved(EntityPlayerMP player, ShareNetwork.SavedRequest message) {
         if (!player.canCommandSenderUseCommand(2, "wf")) {
@@ -540,36 +593,41 @@ public final class ChunkLoadServer {
         if (world == null) {
             return;
         }
-        File folder = world.getChunkSaveLocation();
         for (int n = 0; n + 1 < message.regions.length; n += 2) {
-            int rx = message.regions[n], rz = message.regions[n + 1];
-            ShareNetwork.SavedChunks answer = new ShareNetwork.SavedChunks();
-            answer.dimension = player.dimension;
-            answer.regionX = rx;
-            answer.regionZ = rz;
-            File file = new File(new File(folder, "region"), "r." + rx + "." + rz + ".mca");
-            // Region files that aren't there are not made (the region cache would create them).
-            net.minecraft.world.chunk.storage.RegionFile region = file.isFile() && file.length() > 0
-                ? RegionFileCache.createOrLoadRegionFile(folder, rx * 32, rz * 32)
-                : null;
-            for (int lz = 0; lz < 32; lz++) {
-                for (int lx = 0; lx < 32; lx++) {
-                    boolean saved = world.theChunkProviderServer.chunkExists(rx * 32 + lx, rz * 32 + lz);
-                    if (!saved && region != null) {
-                        try {
-                            saved = region.isChunkSaved(lx, lz);
-                        } catch (RuntimeException e) {
-                            saved = false;
-                        }
-                    }
-                    if (saved) {
-                        int bit = lz * 32 + lx;
-                        answer.bits[bit >> 6] |= 1L << (bit & 63);
+            ShareNetwork
+                .sendTo(savedChunks(world, player.dimension, message.regions[n], message.regions[n + 1]), player);
+        }
+    }
+
+    /** Which chunks of a region are saved in the world (or loaded now). */
+    private static ShareNetwork.SavedChunks savedChunks(WorldServer world, int dimension, int rx, int rz) {
+        File folder = world.getChunkSaveLocation();
+        ShareNetwork.SavedChunks answer = new ShareNetwork.SavedChunks();
+        answer.dimension = dimension;
+        answer.regionX = rx;
+        answer.regionZ = rz;
+        File file = new File(new File(folder, "region"), "r." + rx + "." + rz + ".mca");
+        // Region files that aren't there are not made (the region cache would create them).
+        net.minecraft.world.chunk.storage.RegionFile region = file.isFile() && file.length() > 0
+            ? RegionFileCache.createOrLoadRegionFile(folder, rx * 32, rz * 32)
+            : null;
+        for (int lz = 0; lz < 32; lz++) {
+            for (int lx = 0; lx < 32; lx++) {
+                boolean saved = world.theChunkProviderServer.chunkExists(rx * 32 + lx, rz * 32 + lz);
+                if (!saved && region != null) {
+                    try {
+                        saved = region.isChunkSaved(lx, lz);
+                    } catch (RuntimeException e) {
+                        saved = false;
                     }
                 }
+                if (saved) {
+                    int bit = lz * 32 + lx;
+                    answer.bits[bit >> 6] |= 1L << (bit & 63);
+                }
             }
-            ShareNetwork.sendTo(answer, player);
         }
+        return answer;
     }
 
     /** What each online player was last told about loading from the map, by player (a new login is told again). */
@@ -651,11 +709,21 @@ public final class ChunkLoadServer {
             return;
         }
         tellAllowed();
+        if (!scans.isEmpty()) {
+            continueScans();
+        }
         if (jobs.isEmpty() && inbox.isEmpty()) {
             return;
         }
         Object[] next;
         while ((next = inbox.poll()) != null) {
+            if (next[1] instanceof ShareNetwork.SavedScan) {
+                EntityPlayerMP player = online((UUID) next[0]);
+                if (player != null) {
+                    startScan(player);
+                }
+                continue;
+            }
             if (next[1] instanceof ShareNetwork.SavedRequest) {
                 EntityPlayerMP player = online((UUID) next[0]);
                 if (player != null) {

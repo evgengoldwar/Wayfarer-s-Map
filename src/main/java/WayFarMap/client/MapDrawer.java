@@ -401,8 +401,10 @@ public final class MapDrawer {
         int height) {
         double left = centerX - width / 2.0 / scale;
         double top = centerZ - height / 2.0 / scale;
-        // Chunks only when they are far enough apart to tell, and not when only the regions are asked for.
-        boolean chunks = Config.gridStyle != Config.GRID_REGIONS && 16 * scale >= 6;
+        // Chunks only when they are far enough apart to tell, and not when only the regions are asked for. With
+        // chunks only, they are drawn at any zoom and region borders are no stronger than the rest.
+        boolean chunksOnly = Config.gridStyle == Config.GRID_CHUNKS;
+        boolean chunks = chunksOnly || Config.gridStyle != Config.GRID_REGIONS && 16 * scale >= 6;
         int step = chunks ? 16 : MapRegion.SIZE;
 
         // Lines are placed and sized in real screen pixels: snapping to GUI pixels (2-4 screen pixels each) made them
@@ -422,7 +424,7 @@ public final class MapDrawer {
             if (sx > x + width) {
                 break;
             }
-            boolean strong = Math.floorMod(bx, MapRegion.SIZE) == 0;
+            boolean strong = !chunksOnly && Math.floorMod(bx, MapRegion.SIZE) == 0;
             if (sx >= x && (chunks || strong)) {
                 double lx = Math.floor(sx / pixel) * pixel;
                 columns.add(new double[] { lx, Math.min(lx + thickness, x + width), strong ? 1 : 0 });
@@ -435,7 +437,7 @@ public final class MapDrawer {
             if (sy > y + height) {
                 break;
             }
-            boolean strong = Math.floorMod(bz, MapRegion.SIZE) == 0;
+            boolean strong = !chunksOnly && Math.floorMod(bz, MapRegion.SIZE) == 0;
             if (sy >= y && (chunks || strong)) {
                 double ly = Math.floor(sy / pixel) * pixel;
                 rows.add(new double[] { ly, Math.min(ly + thickness, y + height), strong ? 1 : 0 });
@@ -457,6 +459,11 @@ public final class MapDrawer {
             addRect(tessellator, column[0], from, column[1], y + height, column[2] > 0 ? strongLine : chunkLine);
         }
         for (double[] row : rows) {
+            if (chunksOnly) {
+                // All lines alike: a row is one quad through the crossings, which the columns left out.
+                addRect(tessellator, x, row[0], x + width, row[1], chunkLine);
+                continue;
+            }
             double from = x;
             for (double[] column : columns) {
                 addRect(tessellator, from, row[0], column[0], row[1], row[2] > 0 ? strongLine : chunkLine);

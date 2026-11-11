@@ -161,11 +161,13 @@ public final class ChunkLoadClient {
                 wasInWorld = false;
                 ChunkLoadView.setAllowed(false);
                 Teleport.setServerAllowed(false);
+                ChunkLoadMissing.setServerAnswers(false);
             }
             // That word may come while joining, before the world is there: it is kept.
             inbox.removeIf(m -> !(m instanceof ShareNetwork.LoadAllowed) && !(m instanceof ShareNetwork.LoadEnded));
             batch = null;
             total = 0;
+            ChunkLoadMissing.reset();
             return;
         }
         wasInWorld = true;
@@ -175,13 +177,17 @@ public final class ChunkLoadClient {
                 start((ShareNetwork.LoadBatch) message);
             } else if (message instanceof ShareNetwork.SavedChunks) {
                 ChunkLoadView.saved((ShareNetwork.SavedChunks) message);
+            } else if (message instanceof ShareNetwork.SavedScan) {
+                ChunkLoadMissing.scanned((ShareNetwork.SavedScan) message);
             } else if (message instanceof ShareNetwork.LoadAllowed) {
                 ChunkLoadView.setAllowed(((ShareNetwork.LoadAllowed) message).allowed);
                 Teleport.setServerAllowed(((ShareNetwork.LoadAllowed) message).teleport);
+                ChunkLoadMissing.setServerAnswers(((ShareNetwork.LoadAllowed) message).scan);
             } else if (message instanceof ShareNetwork.LoadEnded) {
                 ended(world, (ShareNetwork.LoadEnded) message, mc);
             }
         }
+        ChunkLoadMissing.tick(mc);
         ShareNetwork.LoadBatch b = batch;
         if (b == null) {
             return;

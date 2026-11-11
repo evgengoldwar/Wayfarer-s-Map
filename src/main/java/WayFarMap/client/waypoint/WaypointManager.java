@@ -203,6 +203,12 @@ public class WaypointManager {
         save();
     }
 
+    /** Adds several waypoints with one save (waypoints copied from another map). */
+    public void addWaypoints(Collection<Waypoint> waypoints) {
+        data.waypoints.addAll(waypoints);
+        save();
+    }
+
     /**
      * Adds a death marker to the death group (created again if it was deleted), moves all death markers into it and
      * removes the oldest ones beyond {@code keep}. The death group of another language ({@code oldNames}: its name in

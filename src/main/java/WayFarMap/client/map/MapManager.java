@@ -129,6 +129,11 @@ public class MapManager implements IResourceManagerReloadListener {
         return surface;
     }
 
+    /** Surface map of the player's dimension, whatever is shown, or null outside of a world. */
+    public MapDimension getSurfaceMap() {
+        return surface;
+    }
+
     /** Biome map of the current dimension, or null outside of a world. */
     public MapDimension getBiomeMap() {
         return biomes;
@@ -1140,12 +1145,16 @@ public class MapManager implements IResourceManagerReloadListener {
     private void open(Minecraft mc, WorldClient world) {
         currentWorld = world;
         int dimensionId = world.provider.dimensionId;
-        worldDirectory = accountDirectory(mc, new File(new File(mc.mcDataDir, "wayfarmap"), getWorldFolder(mc)));
+        File root = new File(mc.mcDataDir, "wayfarmap");
+        worldDirectory = accountDirectory(mc, new File(root, getWorldFolder(mc)));
+        migrateOldSingleplayerFolder(mc, root, worldDirectory);
         checkSameWorld(mc, worldDirectory);
         dimensionDirectory = new File(worldDirectory, "dim" + dimensionId);
         // Name and sky saved so the world map can show this dimension from elsewhere.
         writeInfo(dimensionDirectory, world.provider);
         WaypointManager.INSTANCE.load(worldDirectory);
+        // Once a world: its JourneyMap map and waypoints, before its maps are read.
+        JourneyMapImport.run(mc, worldDirectory);
         surface = new MapDimension(dimensionId, dimensionDirectory, loadExecutor).withPlantless();
         biomes = new MapDimension(dimensionId, new File(dimensionDirectory, "biomes"), loadExecutor);
         lastAutosave = System.currentTimeMillis();
@@ -1212,7 +1221,7 @@ public class MapManager implements IResourceManagerReloadListener {
     private static String getWorldFolder(Minecraft mc) {
         IntegratedServer server = mc.getIntegratedServer();
         if (mc.isSingleplayer() && server != null) {
-            return "singleplayer" + File.separator + sanitize(server.getFolderName());
+            return "singleplayer" + File.separator + worldFolderName(server.getFolderName());
         }
         ServerData serverData = mc.func_147104_D(); // getCurrentServerData
         String address = serverData != null && serverData.serverIP != null ? serverData.serverIP : "unknown";
@@ -1296,6 +1305,132 @@ public class MapManager implements IResourceManagerReloadListener {
 
     private static String sanitize(String name) {
         return name.replaceAll("[^a-zA-Z0-9._-]", "_");
+    }
+
+    /**
+     * The map folder of a single player world has the same name as the world's folder in {@code saves}, as Minecraft
+     * and other mods (Server Utilities backups) name it: "A B" and "A_B", or worlds named in Chinese, are other
+     * worlds and must not share a map. Minecraft already made the name safe for the file system when the world was
+     * made; only a name that could leave the {@code singleplayer} folder is changed.
+     */
+    static String worldFolderName(String folderName) {
+        if (folderName == null || folderName.trim()
+            .isEmpty() || folderName.equals(".") || folderName.equals("..")) {
+            return "_";
+        }
+        StringBuilder name = new StringBuilder(folderName.length());
+        for (int i = 0; i < folderName.length(); i++) {
+            char c = folderName.charAt(i);
+            name.append(c < 32 || "/\\:*?\"<>|".indexOf(c) >= 0 ? '_' : c);
+        }
+        return name.toString();
+    }
+
+    /**
+     * Maps of single player worlds were saved under a name with every character other than {@code a-z A-Z 0-9 . _ -}
+     * made {@code _}. This account's map there is moved to the folder named as in {@code saves}, the first time the
+     * world is played after the change. Several worlds could have shared that old folder: only a map of this world's
+     * seed is taken, the one in use there, or else the newest one put aside by {@link #checkSameWorld}. The 3D
+     * pictures cache is moved with it.
+     */
+    private static void migrateOldSingleplayerFolder(Minecraft mc, File root, File account) {
+        IntegratedServer server = mc.getIntegratedServer();
+        if (!mc.isSingleplayer() || server == null || account.exists()) {
+            return;
+        }
+        String oldName = sanitize(server.getFolderName());
+        File newWorld = account.getParentFile();
+        File oldWorld = new File(new File(root, "singleplayer"), oldName);
+        if (oldName.equals(newWorld.getName()) || !oldWorld.isDirectory()) {
+            return;
+        }
+        // Maps saved before per-account maps, directly in the old folder, go to an account first.
+        File oldAccount = accountDirectory(mc, oldWorld);
+        String seed = currentSeed(server);
+        File source = null;
+        if (oldAccount.isDirectory()) {
+            String saved = savedSeed(oldAccount);
+            if (saved == null || seed == null || saved.equals(seed)) {
+                source = oldAccount;
+            }
+        }
+        if (source == null && seed != null) {
+            // Put aside when another world of the same old name was played: <account>-seed<seed>-<time>.
+            String prefix = oldAccount.getName() + "-seed" + sanitize(seed) + "-";
+            File[] aside = oldWorld.listFiles(
+                file -> file.isDirectory() && file.getName()
+                    .startsWith(prefix));
+            long newest = Long.MIN_VALUE;
+            if (aside != null) {
+                for (File file : aside) {
+                    long time;
+                    try {
+                        time = Long.parseLong(
+                            file.getName()
+                                .substring(prefix.length()));
+                    } catch (NumberFormatException e) {
+                        continue;
+                    }
+                    if (time > newest) {
+                        newest = time;
+                        source = file;
+                    }
+                }
+            }
+        }
+        if (source == null) {
+            return;
+        }
+        if (!newWorld.isDirectory() && !newWorld.mkdirs()) {
+            WayFarMap.LOG.warn("Could not make {} to move the map of {} into", newWorld, source);
+            return;
+        }
+        if (!source.renameTo(account)) {
+            WayFarMap.LOG.warn("Could not move the map in {} to {}", source, account);
+            return;
+        }
+        WayFarMap.LOG.info("Moved the map in {} to {}, named as the world's folder in saves", source, account);
+        File cache = new File(new File(root, "cache"), "singleplayer");
+        File oldCache = new File(new File(cache, oldName), source.getName());
+        File newCache = new File(new File(cache, newWorld.getName()), account.getName());
+        if (oldCache.isDirectory() && !newCache.exists()) {
+            newCache.getParentFile()
+                .mkdirs();
+            if (!oldCache.renameTo(newCache)) {
+                WayFarMap.LOG.warn("Could not move the 3D map cache {} to {}", oldCache, newCache);
+            }
+            deleteIfEmpty(oldCache.getParentFile());
+        }
+        deleteIfEmpty(oldWorld);
+    }
+
+    private static void deleteIfEmpty(File directory) {
+        String[] files = directory.list();
+        if (files != null && files.length == 0 && !directory.delete()) {
+            WayFarMap.LOG.warn("Could not delete the empty folder {}", directory);
+        }
+    }
+
+    private static String currentSeed(IntegratedServer server) {
+        if (server.worldServers == null || server.worldServers.length == 0 || server.worldServers[0] == null) {
+            return null;
+        }
+        return String.valueOf(server.worldServers[0].getSeed());
+    }
+
+    /** The seed saved with a map by {@link #checkSameWorld}, null if none. */
+    private static String savedSeed(File directory) {
+        File file = new File(directory, WORLD_FILE);
+        if (!file.isFile()) {
+            return null;
+        }
+        try {
+            String saved = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8).trim();
+            return saved.isEmpty() ? null : saved;
+        } catch (IOException e) {
+            WayFarMap.LOG.warn("Could not read {}", file, e);
+            return null;
+        }
     }
 
     private static long chunkKey(int cx, int cz) {

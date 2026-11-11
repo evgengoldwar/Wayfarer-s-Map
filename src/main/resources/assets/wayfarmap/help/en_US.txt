@@ -58,7 +58,9 @@ Any button of the map except the §bgear§r and the dimension title can be hidde
 # {icon:navigation} Map navigation
 - §eLeft drag§r — move the map
 - §eWheel§r — zoom (towards the cursor)
+- §e+§r / §e-§r — zoom, as the wheel does
 - §eSpace§r — back to the player
+- §eH§r — hide the waypoints from the map, again to show them
 - The map opens §fwhere you closed it§r — same zoom and dimension (with §bCrosshair§r on — always at you)
 - §eRight click§r on empty space — menu: §bTeleport here§r, §bNew waypoint§r, §bQuick waypoint§r (a waypoint at once, named by its coordinates) and, on the 2D map, §bDelete region§r (the 512×512 blocks around it from the 2D map, after asking; loaded chunks come back when they change or load again)
 - §eRight click§r on a waypoint — menu: §bShare§r (in chat), §bTeleport§r, §bEdit§r, §bRemove§r, §bDisable§r (gone from the world and the minimap; on this map it stays, faded, and the same menu turns it on again)

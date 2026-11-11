@@ -512,6 +512,18 @@ public final class ChunkLoadView {
         return state == PENDING || state == PENDING_3D;
     }
 
+    /** The regions of the dimension the server told which chunks are saved in (bit lz * 32 + lx), by region key. */
+    public static Map<Long, long[]> savedRegions(int dimension) {
+        Map<Long, long[]> regions = SAVED_CHUNKS.get(dimension);
+        return regions == null ? new HashMap<>() : new HashMap<>(regions);
+    }
+
+    /** Whether the chunk is queued to be loaded. */
+    public static boolean isQueued(int dimension, int chunkX, int chunkZ) {
+        Map<Long, Long> pending = PENDING_CHUNKS.get(dimension);
+        return pending != null && pending.containsKey(pack(chunkX, chunkZ));
+    }
+
     /** Whether the server said the chunk is saved in the world (region loading view); false if not known yet. */
     private static boolean isSaved(int dimension, int chunkX, int chunkZ) {
         Map<Long, long[]> regions = SAVED_CHUNKS.get(dimension);
