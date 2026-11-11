@@ -848,6 +848,13 @@ wayfarmap.gui.load_stop=停止
 wayfarmap.gui.load_stop.desc=停止正在进行的加载（/wf chunkload stop）：仍在排队的区块被取消，已绘制的保留。
 wayfarmap.gui.load_legend_pending_3d=排队中（3D）
 wayfarmap.gui.load_all_saved_yes_3d=是，将所有已保存区块加载到 2D 和 3D 地图
+wayfarmap.gui.load_missing=仅加载缺失的区块（灰色）
+wayfarmap.gui.load_missing_3d=仅将缺失的区块（灰色）加载到 2D 和 3D 地图
+wayfarmap.gui.load_missing_no_answer=缺失区块：服务器没有回复哪些区块已保存。
+wayfarmap.gui.load_missing_none=缺失区块：没有，所有已保存区块都已在地图上。
+wayfarmap.gui.load_missing_queued=缺失区块：已将 %s 个不在地图上的已保存区块加入队列。进度显示在地图上。
+wayfarmap.gui.load_missing_asking=缺失区块：正在询问服务器哪些区块已保存……
+wayfarmap.gui.load_missing_looking=缺失区块：正在检查地图，%s / %s 个区域
 wayfarmap.gui.load_progress=%s：%s 区块 · %s%% · %s/秒 · %s · 剩余 %s
 wayfarmap.gui.load_progress_done=%s 完成：%s 区块，用时 %s
 wayfarmap.gui.pick_size=%s x %s = %s 区块

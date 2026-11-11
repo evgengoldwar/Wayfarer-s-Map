@@ -848,6 +848,13 @@ wayfarmap.gui.load_stop=Стоп
 wayfarmap.gui.load_stop.desc=Останавливает идущую загрузку (/wf chunkload stop): оставшиеся в очереди чанки снимаются, уже нанесённое остаётся на карте.
 wayfarmap.gui.load_legend_pending_3d=В очереди (3D)
 wayfarmap.gui.load_all_saved_yes_3d=Да, загрузить все сохранённые чанки на 2D- и 3D-карту
+wayfarmap.gui.load_missing=Загрузить только недостающие чанки (серые)
+wayfarmap.gui.load_missing_3d=Загрузить только недостающие чанки (серые) на 2D- и 3D-карту
+wayfarmap.gui.load_missing_no_answer=Недостающие чанки: сервер не ответил, какие чанки сохранены.
+wayfarmap.gui.load_missing_none=Недостающие чанки: их нет, все сохранённые чанки уже на карте.
+wayfarmap.gui.load_missing_queued=Недостающие чанки: в очередь поставлено %s сохранённых чанков, которых нет на карте. Ход загрузки — на карте.
+wayfarmap.gui.load_missing_asking=Недостающие чанки: сервер проверяет, какие чанки сохранены...
+wayfarmap.gui.load_missing_looking=Недостающие чанки: проверка карты, %s / %s регионов
 wayfarmap.gui.load_progress=%s: %s чанков · %s%% · %s/с · %s · осталось %s
 wayfarmap.gui.load_progress_done=%s готово: %s чанков за %s
 wayfarmap.gui.pick_size=%s x %s = %s чанков

@@ -61,6 +61,7 @@ import WayFarMap.client.integration.ThaumcraftNodes;
 import WayFarMap.client.integration.WirelessLayer;
 import WayFarMap.client.map.BiomeHighlight;
 import WayFarMap.client.map.ChunkLoadClient;
+import WayFarMap.client.map.ChunkLoadMissing;
 import WayFarMap.client.map.ChunkLoadView;
 import WayFarMap.client.map.MapCleaner;
 import WayFarMap.client.map.MapDimension;
@@ -1776,7 +1777,10 @@ public class GuiWorldMap extends ScaledScreen {
         String exportStatus = MapExport.statusText();
         exportButton.active = exportStatus != null;
         // An area being loaded with /wf chunkload: how far it got, and the time left.
-        String loadStatus = ChunkLoadClient.INSTANCE.statusText();
+        String loadStatus = ChunkLoadMissing.statusText();
+        if (loadStatus == null) {
+            loadStatus = ChunkLoadClient.INSTANCE.statusText();
+        }
         // On the right, by the help button: what is going on, or a note on the view.
         String right = null;
         int rightColor = Theme.TEXT_MUTED;
@@ -3509,6 +3513,12 @@ public class GuiWorldMap extends ScaledScreen {
                     ChunkLoadView.clearPending(dimension);
                     mc.thePlayer.sendChatMessage("/wf regionload " + (with3d ? "3d" : "2d") + " full");
                 }));
+        // Only the grey chunks: saved in the world, on neither map; those already on it are not loaded again.
+        entries.add(
+            new MenuEntry(
+                Lang.format(with3d ? "wayfarmap.gui.load_missing_3d" : "wayfarmap.gui.load_missing"),
+                ChunkLoadMissing.canStart(),
+                () -> ChunkLoadMissing.start(dimension)));
         entries.add(new MenuEntry(Lang.format("gui.cancel"), true, () -> {}));
         showMenu(entries, MENU_CONFIRM, mouseX, mouseY + 4);
     }

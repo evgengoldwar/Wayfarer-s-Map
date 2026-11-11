@@ -129,6 +129,11 @@ public class MapManager implements IResourceManagerReloadListener {
         return surface;
     }
 
+    /** Surface map of the player's dimension, whatever is shown, or null outside of a world. */
+    public MapDimension getSurfaceMap() {
+        return surface;
+    }
+
     /** Biome map of the current dimension, or null outside of a world. */
     public MapDimension getBiomeMap() {
         return biomes;

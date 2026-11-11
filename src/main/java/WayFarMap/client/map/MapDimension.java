@@ -187,6 +187,19 @@ public class MapDimension {
     }
 
     /**
+     * The region to look at which chunks it has: from memory, else read from its file without keeping it (a look over
+     * the whole dimension must not hold every region); null if there is none. Blocks while reading.
+     */
+    public MapRegion peekRegion(int rx, int rz) {
+        long key = key(rx, rz);
+        MapRegion region = regions.get(key);
+        if (region != null || missing.contains(key)) {
+            return region;
+        }
+        return readFile(directory, fallbackDirectory, rx, rz, label, "peek", 0);
+    }
+
+    /**
      * Returns the region, loading it from disk if needed. Blocks while the region is being read.
      *
      * @param create create an empty region if none exists on disk

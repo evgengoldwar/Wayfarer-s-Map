@@ -848,6 +848,13 @@ wayfarmap.gui.load_stop=Stop
 wayfarmap.gui.load_stop.desc=Stops the loading going on (/wf chunkload stop): the chunks still queued are dropped, what is already on the map stays.
 wayfarmap.gui.load_legend_pending_3d=Queued (3D)
 wayfarmap.gui.load_all_saved_yes_3d=Yes, load every saved chunk onto the 2D and 3D map
+wayfarmap.gui.load_missing=Load only the missing chunks (grey)
+wayfarmap.gui.load_missing_3d=Load only the missing chunks (grey) onto the 2D and 3D map
+wayfarmap.gui.load_missing_no_answer=Missing chunks: the server did not answer which chunks are saved.
+wayfarmap.gui.load_missing_none=Missing chunks: none, every saved chunk is on the map already.
+wayfarmap.gui.load_missing_queued=Missing chunks: %s saved chunks not on the map were queued. Progress shows on the map.
+wayfarmap.gui.load_missing_asking=Missing chunks: asking the server which chunks are saved...
+wayfarmap.gui.load_missing_looking=Missing chunks: looking at the map, %s / %s regions
 wayfarmap.gui.load_progress=%s: %s chunks · %s%% · %s/s · %s · %s left
 wayfarmap.gui.load_progress_done=%s done: %s chunks in %s
 wayfarmap.gui.pick_size=%s x %s = %s chunks

@@ -75,6 +75,8 @@ public final class ShareNetwork {
         channel.registerMessage(WirelessToClient.class, Wireless.class, 16, Side.CLIENT);
         channel.registerMessage(MachinesToClient.class, MachineList.class, 17, Side.CLIENT);
         channel.registerMessage(MachineAskToServer.class, MachineAsk.class, 18, Side.SERVER);
+        channel.registerMessage(SavedScanToServer.class, SavedScan.class, 19, Side.SERVER);
+        channel.registerMessage(SavedScanToClient.class, SavedScan.class, 20, Side.CLIENT);
     }
 
     public static void sendToServer(IMessage message) {
@@ -447,6 +449,35 @@ public final class ShareNetwork {
         }
     }
 
+    /**
+     * From the client: asks which chunks of every region file of the player's dimension are saved (for "load only
+     * the missing chunks"). The server answers a {@link SavedChunks} per region file, a few a tick, then this message
+     * back with {@link #regions} the number of region files, as the end.
+     */
+    public static final class SavedScan implements IMessage {
+
+        public int dimension, regions;
+
+        public SavedScan() {}
+
+        public SavedScan(int dimension, int regions) {
+            this.dimension = dimension;
+            this.regions = regions;
+        }
+
+        @Override
+        public void fromBytes(ByteBuf buf) {
+            dimension = buf.readInt();
+            regions = buf.readInt();
+        }
+
+        @Override
+        public void toBytes(ByteBuf buf) {
+            buf.writeInt(dimension);
+            buf.writeInt(regions);
+        }
+    }
+
     /** Which chunks of a region are saved in the world (or loaded): bit lz * 32 + lx. */
     public static final class SavedChunks implements IMessage {
 
@@ -484,6 +515,11 @@ public final class ShareNetwork {
         public boolean allowed;
         /** May use /tp. Added later, at the end: an older server sends none (read as false). */
         public boolean teleport;
+        /**
+         * The server answers {@link SavedScan}. Added later, at the end: an older server sends none (read as false),
+         * and is not sent a message it doesn't know.
+         */
+        public boolean scan = true;
 
         public LoadAllowed() {}
 
@@ -496,12 +532,14 @@ public final class ShareNetwork {
         public void fromBytes(ByteBuf buf) {
             allowed = buf.readBoolean();
             teleport = buf.isReadable() && buf.readBoolean();
+            scan = buf.isReadable() && buf.readBoolean();
         }
 
         @Override
         public void toBytes(ByteBuf buf) {
             buf.writeBoolean(allowed);
             buf.writeBoolean(teleport);
+            buf.writeBoolean(scan);
         }
     }
 
@@ -643,6 +681,24 @@ public final class ShareNetwork {
         @Override
         public IMessage onMessage(SavedRequest message, MessageContext context) {
             ChunkLoadServer.INSTANCE.receive(context.getServerHandler().playerEntity, message);
+            return null;
+        }
+    }
+
+    public static final class SavedScanToServer implements IMessageHandler<SavedScan, IMessage> {
+
+        @Override
+        public IMessage onMessage(SavedScan message, MessageContext context) {
+            ChunkLoadServer.INSTANCE.receive(context.getServerHandler().playerEntity, message);
+            return null;
+        }
+    }
+
+    public static final class SavedScanToClient implements IMessageHandler<SavedScan, IMessage> {
+
+        @Override
+        public IMessage onMessage(SavedScan message, MessageContext context) {
+            WayFarMap.proxy.receiveChunkLoad(message);
             return null;
         }
     }
