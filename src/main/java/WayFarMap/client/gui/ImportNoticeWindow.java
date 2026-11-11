@@ -55,7 +55,8 @@ final class ImportNoticeWindow {
             + keptLines().size() * LINE
             + SECTION_GAP
             + warnHeight()
-            + SECTION_GAP + 2
+            + SECTION_GAP
+            + 2
             + BUTTON_HEIGHT
             + PAD;
     }
