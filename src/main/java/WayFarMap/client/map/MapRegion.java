@@ -466,6 +466,18 @@ public class MapRegion implements PixelSource {
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
             // The driver regenerates the mipmaps on every upload.
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL14.GL_GENERATE_MIPMAP, GL11.GL_TRUE);
+            // Allocate with the real pixels instead of null + glTexSubImage2D: the null-allocated path
+            // renders magenta at 1:4 under Angelica's SDL GPU/Metal renderer (Angelica #2358).
+            if (uploadBuffer == null) {
+                uploadBuffer = BufferUtils.createIntBuffer(SIZE * SIZE);
+            }
+            uploadBuffer.clear();
+            uploadBuffer.put(pixels, 0, SIZE * SIZE)
+                .flip();
+            GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 4);
+            GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 0);
+            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 0);
+            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 0);
             GL11.glTexImage2D(
                 GL11.GL_TEXTURE_2D,
                 0,
@@ -475,12 +487,10 @@ public class MapRegion implements PixelSource {
                 0,
                 GL12.GL_BGRA,
                 GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
-                (IntBuffer) null);
+                uploadBuffer);
+            dirtyMaxX = -1;
             dirtyMinX = 0;
-            dirtyMinZ = 0;
-            dirtyMaxX = SIZE - 1;
-            dirtyMaxZ = SIZE - 1;
-            dirtySince = 0;
+            lastUpload = System.currentTimeMillis();
             FlatLog.textureMade(rx, rz, false);
         } else {
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
