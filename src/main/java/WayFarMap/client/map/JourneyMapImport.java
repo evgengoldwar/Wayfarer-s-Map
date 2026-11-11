@@ -30,8 +30,10 @@ import WayFarMap.client.waypoint.WaypointManager;
 
 /**
  * Copies a single player world's JourneyMap map and waypoints into this mod's, once, the first time the world is
- * played with it: {@code journeymap/data/sp/<world>/DIM<id>/day/<rx>,<rz>.png} are regions of 512 x 512 blocks, one
- * pixel a block, like this mod's, and {@code waypoints/*.json} one waypoint each. Pixels this map has already are
+ * played with it: {@code journeymap/data/sp/<world>/DIM0/day/<rx>,<rz>.png} are regions of 512 x 512 blocks, one
+ * pixel a block, like this mod's, and {@code waypoints/*.json} one waypoint each. Only the Overworld's map: the other
+ * dimensions JourneyMap keeps as slices by height (the Nether), or are not the surface this map shows; the waypoints
+ * of every dimension are copied. Pixels this map has already are
  * kept; JourneyMap's only fill what it hasn't explored. Waypoints go into a "JourneyMap" group, those already there
  * (same name, place and dimension) are not added again.
  * <p>
@@ -45,7 +47,6 @@ public final class JourneyMapImport {
     private static final String NOTICE_FILE = "journeymap-import-notice";
     public static final String GROUP = "JourneyMap";
 
-    private static final Pattern DIMENSION = Pattern.compile("DIM(-?\\d+)");
     private static final Pattern REGION = Pattern.compile("(-?\\d+),(-?\\d+)\\.png");
 
     private JourneyMapImport() {}
@@ -148,33 +149,25 @@ public final class JourneyMapImport {
         return null;
     }
 
-    /** The surface maps of every dimension ({@code DIM<id>/day}); returns how many regions got something. */
+    /** The Overworld's surface map ({@code DIM0/day}); returns how many regions got something. */
     private static int copyMaps(File source, File worldDirectory) {
-        File[] dimensions = source.listFiles(File::isDirectory);
-        if (dimensions == null) {
+        File[] images = new File(new File(source, "DIM0"), "day").listFiles();
+        if (images == null) {
             return 0;
         }
         int copied = 0;
-        for (File dimension : dimensions) {
-            Matcher dm = DIMENSION.matcher(dimension.getName());
-            File day = new File(dimension, "day");
-            File[] images = day.listFiles();
-            if (!dm.matches() || images == null) {
+        File target = new File(worldDirectory, "dim0");
+        for (File image : images) {
+            Matcher rm = REGION.matcher(image.getName());
+            if (!rm.matches()) {
                 continue;
             }
-            File target = new File(worldDirectory, "dim" + dm.group(1));
-            for (File image : images) {
-                Matcher rm = REGION.matcher(image.getName());
-                if (!rm.matches()) {
-                    continue;
+            try {
+                if (copyRegion(image, target, Integer.parseInt(rm.group(1)), Integer.parseInt(rm.group(2)))) {
+                    copied++;
                 }
-                try {
-                    if (copyRegion(image, target, Integer.parseInt(rm.group(1)), Integer.parseInt(rm.group(2)))) {
-                        copied++;
-                    }
-                } catch (IOException | RuntimeException e) {
-                    WayFarMap.LOG.warn("Could not copy the JourneyMap region {}", image, e);
-                }
+            } catch (IOException | RuntimeException e) {
+                WayFarMap.LOG.warn("Could not copy the JourneyMap region {}", image, e);
             }
         }
         return copied;

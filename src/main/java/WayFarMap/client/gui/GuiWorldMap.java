@@ -1454,85 +1454,26 @@ public class GuiWorldMap extends ScaledScreen {
     // ---------------------------------------------------------------- JourneyMap copy notice
 
     /**
-     * What was copied from JourneyMap into this world's map ({@link JourneyMapImport#takeNotice}): {regions,
-     * waypoints, folder}, shown in a window after the welcome window until closed; null when nothing is shown.
+     * What was copied from JourneyMap into this world's map ({@link JourneyMapImport#takeNotice}), shown in a window
+     * after the welcome window until closed; null when nothing is shown.
      */
-    private Object[] importNotice;
+    private ImportNoticeWindow importNotice;
     /** The notice was looked for while this map was open (it is told once). */
     private boolean importChecked;
-    private static final int NOTICE_WIDTH = 260, NOTICE_PAD = 12, NOTICE_BUTTON_W = 80, NOTICE_BUTTON_H = 18;
 
     /** After the welcome window (if it shows), the notice of what was copied from JourneyMap, once. */
     private void checkImportNotice() {
         if (!importChecked && !welcome) {
             importChecked = true;
-            importNotice = JourneyMapImport.takeNotice(MapManager.INSTANCE.getWorldDirectory());
-        }
-    }
-
-    /** The notice's lines, wrapped to the window. */
-    private List<String> importNoticeLines() {
-        List<String> lines = new ArrayList<>();
-        int regions = (Integer) importNotice[0], waypoints = (Integer) importNotice[1];
-        int wrap = NOTICE_WIDTH - 2 * NOTICE_PAD;
-        lines.addAll(
-            fontRendererObj
-                .listFormattedStringToWidth(Lang.format("wayfarmap.journeymap.notice_text", importNotice[2]), wrap));
-        lines.add("");
-        if (regions > 0) {
-            lines.addAll(
-                fontRendererObj
-                    .listFormattedStringToWidth(Lang.format("wayfarmap.journeymap.notice_map", regions), wrap));
-        }
-        if (waypoints > 0) {
-            lines.addAll(
-                fontRendererObj.listFormattedStringToWidth(
-                    Lang.format("wayfarmap.journeymap.notice_waypoints", waypoints, JourneyMapImport.GROUP),
-                    wrap));
-        }
-        return lines;
-    }
-
-    /** {x0, y0, x1, y1} of the notice window and {bx0, by0} of its button. */
-    private int[] importNoticeBox(int lineCount) {
-        int h = NOTICE_PAD + 14 + lineCount * 10 + 8 + NOTICE_BUTTON_H + NOTICE_PAD;
-        int x0 = (width - NOTICE_WIDTH) / 2, y0 = (height - h) / 2;
-        int bx = x0 + (NOTICE_WIDTH - NOTICE_BUTTON_W) / 2, by = y0 + h - NOTICE_PAD - NOTICE_BUTTON_H;
-        return new int[] { x0, y0, x0 + NOTICE_WIDTH, y0 + h, bx, by };
-    }
-
-    private void drawImportNotice(int mouseX, int mouseY) {
-        List<String> lines = importNoticeLines();
-        int[] box = importNoticeBox(lines.size());
-        Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
-        Theme.panel(box[0], box[1], box[2], box[3]);
-        Theme.text(
-            fontRendererObj,
-            Lang.format("wayfarmap.journeymap.notice_title"),
-            box[0] + NOTICE_PAD,
-            box[1] + NOTICE_PAD,
-            Theme.TEXT_BRIGHT);
-        int y = box[1] + NOTICE_PAD + 14;
-        for (String line : lines) {
-            Theme.text(fontRendererObj, line, box[0] + NOTICE_PAD, y, Theme.TEXT);
-            y += 10;
-        }
-        int bx1 = box[4] + NOTICE_BUTTON_W, by1 = box[5] + NOTICE_BUTTON_H;
-        boolean hover = Theme.inside(mouseX, mouseY, box[4], box[5], bx1, by1);
-        Theme.fill(box[4], box[5], bx1, by1, hover ? Theme.ACCENT : Theme.CONTROL);
-        Theme.centered(
-            fontRendererObj,
-            Lang.format("gui.done"),
-            box[4] + NOTICE_BUTTON_W / 2,
-            box[5] + (NOTICE_BUTTON_H - 8) / 2,
-            hover ? Theme.TEXT_BRIGHT : Theme.BUTTON_TEXT);
-    }
-
-    /** A click while the notice shows: its button closes it; the map takes nothing meanwhile. */
-    private void clickImportNotice(int mouseX, int mouseY) {
-        int[] box = importNoticeBox(importNoticeLines().size());
-        if (Theme.inside(mouseX, mouseY, box[4], box[5], box[4] + NOTICE_BUTTON_W, box[5] + NOTICE_BUTTON_H)) {
-            importNotice = null;
+            Object[] notice = JourneyMapImport.takeNotice(MapManager.INSTANCE.getWorldDirectory());
+            if (notice != null) {
+                importNotice = new ImportNoticeWindow(
+                    fontRendererObj,
+                    (Integer) notice[0],
+                    (Integer) notice[1],
+                    (String) notice[2],
+                    JourneyMapImport.GROUP);
+            }
         }
     }
 
@@ -1578,7 +1519,7 @@ public class GuiWorldMap extends ScaledScreen {
         if (welcome) {
             drawWelcome(mouseX, mouseY);
         } else if (importNotice != null) {
-            drawImportNotice(mouseX, mouseY);
+            importNotice.draw(width, height, mouseX, mouseY);
         }
     }
 
@@ -3280,8 +3221,8 @@ public class GuiWorldMap extends ScaledScreen {
             return;
         }
         if (importNotice != null) {
-            if (button == 0) {
-                clickImportNotice(mouseX, mouseY);
+            if (button == 0 && importNotice.click(width, height, mouseX, mouseY)) {
+                importNotice = null;
             }
             return;
         }
