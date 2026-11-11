@@ -1315,8 +1315,7 @@ public class MapManager implements IResourceManagerReloadListener {
      */
     static String worldFolderName(String folderName) {
         if (folderName == null || folderName.trim()
-            .isEmpty() || folderName.equals(".")
-            || folderName.equals("..")) {
+            .isEmpty() || folderName.equals(".") || folderName.equals("..")) {
             return "_";
         }
         StringBuilder name = new StringBuilder(folderName.length());

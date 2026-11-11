@@ -1476,9 +1476,8 @@ public class GuiWorldMap extends ScaledScreen {
         int regions = (Integer) importNotice[0], waypoints = (Integer) importNotice[1];
         int wrap = NOTICE_WIDTH - 2 * NOTICE_PAD;
         lines.addAll(
-            fontRendererObj.listFormattedStringToWidth(
-                Lang.format("wayfarmap.journeymap.notice_text", importNotice[2]),
-                wrap));
+            fontRendererObj
+                .listFormattedStringToWidth(Lang.format("wayfarmap.journeymap.notice_text", importNotice[2]), wrap));
         lines.add("");
         if (regions > 0) {
             lines.addAll(
