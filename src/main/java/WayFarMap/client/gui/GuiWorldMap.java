@@ -84,6 +84,8 @@ public class GuiWorldMap extends ScaledScreen {
 
     /** Zoom level is kept between openings of the map. */
     private static int zoomIndex = DEFAULT_ZOOM;
+    /** H hides the waypoints from this map and shows them again; kept while the game runs. */
+    private static boolean waypointsHidden;
 
     private static final int HEADER_HEIGHT = 24;
     private static final int FOOTER_HEIGHT = 14;
@@ -1547,7 +1549,9 @@ public class GuiWorldMap extends ScaledScreen {
                 8f,
                 true,
                 iso && !otherDimension && IsoEntityDrawer.drawsPlayers());
-            drawWaypoints(mouseX, mouseY);
+            if (!waypointsHidden) {
+                drawWaypoints(mouseX, mouseY);
+            }
         }
 
         double px = mc.thePlayer.prevPosX + (mc.thePlayer.posX - mc.thePlayer.prevPosX) * partialTicks;
@@ -1781,6 +1785,8 @@ public class GuiWorldMap extends ScaledScreen {
             // The area loading view has its own progress bar.
             right = loadStatus;
             rightColor = Theme.ACCENT;
+        } else if (waypointsHidden) {
+            right = Lang.format("wayfarmap.gui.waypoints_hidden");
         } else if (iso) {
             right = Lang.format("wayfarmap.gui.iso_hint");
         } else if (claimsShown() && !chunkloadShown()) {
@@ -3084,8 +3090,8 @@ public class GuiWorldMap extends ScaledScreen {
     }
 
     private Waypoint waypointAt(int mouseX, int mouseY) {
-        if (chunkloadShown()) {
-            // The chunk loading view shows no waypoints.
+        if (chunkloadShown() || waypointsHidden) {
+            // The chunk loading view shows no waypoints, nor the map with them hidden by H.
             return null;
         }
         Waypoint best = null;
@@ -3142,13 +3148,20 @@ public class GuiWorldMap extends ScaledScreen {
         if (wheel == 0) {
             return;
         }
-        int newIndex = Math.max(0, Math.min(Config.MAP_ZOOMS.length - 1, zoomIndex + (wheel > 0 ? 1 : -1)));
+        zoomBy(
+            wheel > 0 ? 1 : -1,
+            Mouse.getEventX() * (double) width / mc.displayWidth,
+            height - Mouse.getEventY() * (double) height / mc.displayHeight);
+    }
+
+    /** One zoom step in ({@code step > 0}) or out, keeping the block at that screen point in place. */
+    private void zoomBy(int step, double screenX, double screenY) {
+        int newIndex = Math.max(0, Math.min(Config.MAP_ZOOMS.length - 1, zoomIndex + step));
         if (newIndex == zoomIndex) {
             return;
         }
-        // Keep the block under the cursor in place while zooming.
-        anchorScreenX = Mouse.getEventX() * (double) width / mc.displayWidth;
-        anchorScreenY = height - Mouse.getEventY() * (double) height / mc.displayHeight;
+        anchorScreenX = screenX;
+        anchorScreenY = screenY;
         double[] offset = screenToWorldOffset(anchorScreenX - width / 2.0, anchorScreenY - height / 2.0);
         anchorWorldX = centerX + offset[0];
         anchorWorldZ = centerZ + offset[1];
@@ -3997,6 +4010,29 @@ public class GuiWorldMap extends ScaledScreen {
                 menu = null;
                 ProspectingLayer.toggleDepleted(vein);
             }
+            return;
+        }
+        boolean zoomIn = keyCode == Keyboard.KEY_EQUALS || keyCode == Keyboard.KEY_ADD
+            || typedChar == '+'
+            || keyCode != Keyboard.KEY_NONE && keyCode == KeyHandler.ZOOM_IN.getKeyCode();
+        boolean zoomOut = keyCode == Keyboard.KEY_MINUS || keyCode == Keyboard.KEY_SUBTRACT
+            || typedChar == '-'
+            || keyCode != Keyboard.KEY_NONE && keyCode == KeyHandler.ZOOM_OUT.getKeyCode();
+        if (zoomIn || zoomOut) {
+            // + and - (and the minimap's zoom keys) zoom as the wheel does: towards the cursor, else the middle.
+            double x = Mouse.getX() * (double) width / mc.displayWidth;
+            double y = height - Mouse.getY() * (double) height / mc.displayHeight;
+            if (x < 0 || y < 0 || x > width || y > height) {
+                x = width / 2.0;
+                y = height / 2.0;
+            }
+            zoomBy(zoomIn ? 1 : -1, x, y);
+            return;
+        }
+        if (keyCode == Keyboard.KEY_H) {
+            // Hides the waypoints from this map, or shows them again.
+            waypointsHidden = !waypointsHidden;
+            menu = null;
             return;
         }
         if (isoShown() && (keyCode == Keyboard.KEY_Q || keyCode == Keyboard.KEY_E)) {

@@ -515,6 +515,7 @@ wayfarmap.option.map.smoothCamera=平滑镜头
 wayfarmap.option.map.smoothCamera.desc=将地图居中到自己（Space 或跟随按钮）或队友位置时，会平滑移动过去，而不是瞬间跳转。
 wayfarmap.gui.iso=3D 地图（等距视角，类似 Dynmap）
 wayfarmap.gui.iso_hint=3D：Q / E 旋转视角
+wayfarmap.gui.waypoints_hidden=路径点已隐藏（按 H 显示）
 wayfarmap.gui.iso_not_recording=方块记录已关闭：新地点不会出现在 3D 地图上（画质下方的 REC 开关或设置）
 wayfarmap.option.map.isoCaptureMs=区块复制时间，每刻毫秒数
 wayfarmap.option.map.isoCaptureMs.desc=每个游戏刻用于将已加载区块中的方块复制到 3D 地图的时间。数值越高，新区块越快显示在地图上，但飞越新区域时可能降低帧率。

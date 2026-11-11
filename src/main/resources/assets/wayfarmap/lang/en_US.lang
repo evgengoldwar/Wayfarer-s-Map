@@ -515,6 +515,7 @@ wayfarmap.option.map.smoothCamera=Smooth camera
 wayfarmap.option.map.smoothCamera.desc=Centering the map on yourself (Space or the follow button) or on a teammate glides there instead of jumping.
 wayfarmap.gui.iso=3D map (isometric, like Dynmap)
 wayfarmap.gui.iso_hint=3D: Q / E turn the view
+wayfarmap.gui.waypoints_hidden=Waypoints hidden (H shows them)
 wayfarmap.gui.iso_not_recording=Block recording is off: new places don't come onto the 3D map (REC switch under the quality, or the settings)
 wayfarmap.option.map.isoCaptureMs=Chunk copying, ms per tick
 wayfarmap.option.map.isoCaptureMs.desc=Time per game tick spent copying the blocks of loaded chunks into the 3D map. More puts new chunks on it sooner, but may cost frames while flying over new land.

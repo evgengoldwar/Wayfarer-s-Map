@@ -515,6 +515,7 @@ wayfarmap.option.map.smoothCamera=Плавна камера
 wayfarmap.option.map.smoothCamera.desc=Центрування карти на собі (пробіл або кнопка стеження) чи на тіммейті — плавний переліт, а не стрибок.
 wayfarmap.gui.iso=3D-карта (ізометрія як у Dynmap)
 wayfarmap.gui.iso_hint=3D: Q / E повертають вигляд
+wayfarmap.gui.waypoints_hidden=Мітки приховано (H — показати)
 wayfarmap.gui.iso_not_recording=Запис блоків вимкнено: нові місця не потрапляють на 3D-карту (перемикач REC під якістю або налаштування)
 wayfarmap.option.map.isoCaptureMs=Копіювання чанків, мс/тік
 wayfarmap.option.map.isoCaptureMs.desc=Час за ігровий тік на копіювання блоків завантажених чанків у 3D-карту. Більше — нові чанки з'являються швидше, але під час польоту над новою місцевістю може просідати FPS.
