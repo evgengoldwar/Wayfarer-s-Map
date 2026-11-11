@@ -101,7 +101,7 @@ public class GuiWorldMap extends ScaledScreen {
     private static final int MENU_WIDTH = 130, TEAM_MENU_WIDTH = 190, MENU_ROW = 14;
     private static final String[] CAVE_MODE_KEYS = { "auto", "off", "on" };
     /** Lang key suffixes of {@link Config#gridStyle} values. */
-    private static final String[] GRID_STYLE_KEYS = { "default", "regions" };
+    private static final String[] GRID_STYLE_KEYS = { "default", "regions", "chunks" };
     /** Lang key suffixes of {@link Config#mapLightMode} values. */
     private static final String[] LIGHT_MODE_KEYS = { "auto", "day", "night" };
 
@@ -1064,8 +1064,10 @@ public class GuiWorldMap extends ScaledScreen {
         modesButton.tooltip = Lang.format("wayfarmap.gui.modes") + ": "
             + Lang.format("wayfarmap.gui.modes." + MODE_KEYS[mode]);
         gridButton.active = Config.chunkGrid;
-        gridButton.badge = Config.chunkGrid && Config.gridStyle == Config.GRID_REGIONS ? Theme.ACCENT : 0;
-        String gridStyle = GRID_STYLE_KEYS[Config.gridStyle == Config.GRID_REGIONS ? 1 : 0];
+        gridButton.badge = Config.chunkGrid && Config.gridStyle != Config.GRID_DEFAULT ? Theme.ACCENT : 0;
+        String gridStyle = GRID_STYLE_KEYS[Config.gridStyle >= 0 && Config.gridStyle < GRID_STYLE_KEYS.length
+            ? Config.gridStyle
+            : 0];
         gridButton.tooltip = Lang.format("wayfarmap.gui.grid") + ": "
             + Lang.format(
                 Config.chunkGrid ? "wayfarmap.option.map.gridStyle." + gridStyle : "wayfarmap.option.map.caveMode.off");

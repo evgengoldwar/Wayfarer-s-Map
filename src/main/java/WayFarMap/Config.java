@@ -146,7 +146,7 @@ public class Config {
     public static int topoContourInterval = 4;
     public static boolean chunkGrid = false;
     /** Lines of the grid: chunk and region borders, or region borders only. */
-    public static final int GRID_DEFAULT = 0, GRID_REGIONS = 1;
+    public static final int GRID_DEFAULT = 0, GRID_REGIONS = 1, GRID_CHUNKS = 2;
     public static int gridStyle = GRID_DEFAULT;
     /** What the unexplored part of the 2D map is drawn with: nothing, diagonal lines or dots. */
     public static final int UNEXPLORED_NONE = 0, UNEXPLORED_LINES = 1, UNEXPLORED_DOTS = 2;
@@ -802,9 +802,10 @@ public class Config {
         choice(
             c,
             "gridStyle",
-            "Lines of the grid: 0 = chunk and region borders, 1 = region borders (every 512 blocks) only.",
+            "Lines of the grid: 0 = chunk and region borders, 1 = region borders (every 512 blocks) only,"
+                + " 2 = chunk borders only, at any zoom.",
             GRID_DEFAULT,
-            new String[] { "default", "regions" },
+            new String[] { "default", "regions", "chunks" },
             () -> gridStyle,
             v -> gridStyle = v);
         integer(
@@ -2010,13 +2011,15 @@ public class Config {
         save();
     }
 
-    /** The grid button on the world map: off, chunks and regions, regions only, off again. */
+    /** The grid button on the world map: off, chunks and regions, regions only, chunks only, off again. */
     public static void cycleGrid() {
         if (!chunkGrid) {
             chunkGrid = true;
             gridStyle = GRID_DEFAULT;
         } else if (gridStyle == GRID_DEFAULT) {
             gridStyle = GRID_REGIONS;
+        } else if (gridStyle == GRID_REGIONS) {
+            gridStyle = GRID_CHUNKS;
         } else {
             chunkGrid = false;
         }
