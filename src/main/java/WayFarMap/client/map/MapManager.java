@@ -1153,6 +1153,8 @@ public class MapManager implements IResourceManagerReloadListener {
         // Name and sky saved so the world map can show this dimension from elsewhere.
         writeInfo(dimensionDirectory, world.provider);
         WaypointManager.INSTANCE.load(worldDirectory);
+        // Once a world: its JourneyMap map and waypoints, before its maps are read.
+        JourneyMapImport.run(mc, worldDirectory);
         surface = new MapDimension(dimensionId, dimensionDirectory, loadExecutor).withPlantless();
         biomes = new MapDimension(dimensionId, new File(dimensionDirectory, "biomes"), loadExecutor);
         lastAutosave = System.currentTimeMillis();

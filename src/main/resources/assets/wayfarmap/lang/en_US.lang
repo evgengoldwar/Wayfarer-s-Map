@@ -1054,3 +1054,7 @@ wayfarmap.gui.copy_tag=Copy
 wayfarmap.gui.copy_of=Copy: %s
 wayfarmap.gui.go_original=Show the original
 wayfarmap.about.developer_role=Developer
+wayfarmap.journeymap.notice_title=Copied from JourneyMap
+wayfarmap.journeymap.notice_text=JourneyMap data of this world (journeymap/data/sp/%s) was copied into this map. What this map had explored already was kept.
+wayfarmap.journeymap.notice_map=Map: %s regions
+wayfarmap.journeymap.notice_waypoints=Waypoints: %s, in the "%s" group

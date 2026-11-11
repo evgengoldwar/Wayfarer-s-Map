@@ -1054,3 +1054,7 @@ wayfarmap.gui.copy_tag=Копія
 wayfarmap.gui.copy_of=Копія: %s
 wayfarmap.gui.go_original=Показати оригінал
 wayfarmap.about.developer_role=Розробник
+wayfarmap.journeymap.notice_title=Скопійовано з JourneyMap
+wayfarmap.journeymap.notice_text=Дані JourneyMap цього світу (journeymap/data/sp/%s) скопійовано в цю карту. Те, що ця карта вже дослідила, не змінено.
+wayfarmap.journeymap.notice_map=Карта: %s регіонів
+wayfarmap.journeymap.notice_waypoints=Мітки: %s, у групі «%s»

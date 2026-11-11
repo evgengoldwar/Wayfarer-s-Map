@@ -1054,3 +1054,7 @@ wayfarmap.gui.copy_tag=副本
 wayfarmap.gui.copy_of=副本：%s
 wayfarmap.gui.go_original=显示原路径点
 wayfarmap.about.developer_role=开发者
+wayfarmap.journeymap.notice_title=已从 JourneyMap 复制
+wayfarmap.journeymap.notice_text=这个世界的 JourneyMap 数据（journeymap/data/sp/%s）已复制到本地图。本地图已探索的部分保持不变。
+wayfarmap.journeymap.notice_map=地图：%s 个区域
+wayfarmap.journeymap.notice_waypoints=路径点：%s 个，在“%s”组中
