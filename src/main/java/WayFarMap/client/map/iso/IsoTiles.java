@@ -34,6 +34,7 @@ import org.lwjgl.opengl.GL12;
 import WayFarMap.Config;
 import WayFarMap.Perf;
 import WayFarMap.WayFarMap;
+import WayFarMap.client.GlTextures;
 import WayFarMap.client.MapDrawer;
 
 /**
@@ -520,14 +521,13 @@ final class IsoTiles {
     /** Puts the pixels into the texture (made if -1); returns the texture. */
     private int upload(int texture, int[] pixels) {
         if (texture == -1) {
-            texture = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            texture = GlTextures.create();
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
         } else {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GlTextures.bindForUpload(texture);
         }
         if (uploadBuffer == null) {
             uploadBuffer = BufferUtils.createIntBuffer(PIXELS * PIXELS);
@@ -596,11 +596,11 @@ final class IsoTiles {
 
     private static void deleteTexture(Tile tile) {
         if (tile.nightTexture != -1) {
-            GL11.glDeleteTextures(tile.nightTexture);
+            GlTextures.delete(tile.nightTexture);
             tile.nightTexture = -1;
         }
         if (tile.texture != -1) {
-            GL11.glDeleteTextures(tile.texture);
+            GlTextures.delete(tile.texture);
             tile.texture = -1;
         }
     }

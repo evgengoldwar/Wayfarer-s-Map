@@ -7,6 +7,8 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL14;
 
+import WayFarMap.client.GlTextures;
+
 /**
  * A region shrunk 4 times (128x128 pixels, one per 4x4 blocks) for drawing the map zoomed out: a full region takes
  * about 1.3 MB of memory and as much video memory, so hundreds of them on screen would not fit. The tile keeps only
@@ -182,8 +184,7 @@ public final class LodTile implements PixelSource {
     /** Binds the tile's texture, uploading it if it changed. Render thread only. */
     public void bindTexture() {
         if (textureId == -1) {
-            textureId = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
+            textureId = GlTextures.create();
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
@@ -195,6 +196,7 @@ public final class LodTile implements PixelSource {
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
         }
         if (uploadPending) {
+            GlTextures.bindForUpload(textureId);
             uploadPending = false;
             long start = System.nanoTime();
             if (uploadBuffer == null) {
@@ -237,8 +239,7 @@ public final class LodTile implements PixelSource {
      */
     public void bindGlowTexture() {
         if (glowTextureId == -1) {
-            glowTextureId = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, glowTextureId);
+            glowTextureId = GlTextures.create();
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
@@ -251,6 +252,7 @@ public final class LodTile implements PixelSource {
         if (!glowPending) {
             return;
         }
+        GlTextures.bindForUpload(glowTextureId);
         glowPending = false;
         if (uploadBuffer == null) {
             uploadBuffer = BufferUtils.createIntBuffer(SIZE * SIZE);
@@ -279,11 +281,11 @@ public final class LodTile implements PixelSource {
 
     public void deleteTexture() {
         if (textureId != -1) {
-            GL11.glDeleteTextures(textureId);
+            GlTextures.delete(textureId);
             textureId = -1;
         }
         if (glowTextureId != -1) {
-            GL11.glDeleteTextures(glowTextureId);
+            GlTextures.delete(glowTextureId);
             glowTextureId = -1;
         }
         BiomeHighlight.forget(this);

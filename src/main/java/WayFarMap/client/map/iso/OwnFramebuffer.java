@@ -9,6 +9,8 @@ import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GLContext;
 
+import WayFarMap.client.GlTextures;
+
 /**
  * An off-screen buffer of the mod's own for pictures of blocks and icons. The game's ({@code Framebuffer}) is made only
  * while the game's framebuffers are on ({@code fboEnable}, which other mods may turn off too): without them nothing
@@ -65,8 +67,7 @@ final class OwnFramebuffer {
         int previous = GL11.glGetInteger(BINDING);
         int previousTexture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         try {
-            texture = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            texture = GlTextures.create();
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
             GL11.glTexImage2D(
@@ -165,7 +166,7 @@ final class OwnFramebuffer {
             depth = -1;
         }
         if (texture != -1) {
-            GL11.glDeleteTextures(texture);
+            GlTextures.delete(texture);
             texture = -1;
         }
     }

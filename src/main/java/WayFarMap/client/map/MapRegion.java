@@ -27,6 +27,8 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL14;
 
+import WayFarMap.client.GlTextures;
+
 /**
  * A 512x512 block area of the map (32x32 chunks). Pixels are ARGB; a pixel with alpha 0 has not been explored. Each
  * pixel can also carry one extra byte (0 = unknown): the height to stand on for the surface map, the biome for the
@@ -232,8 +234,7 @@ public class MapRegion implements PixelSource {
     public void bindGlowTexture() {
         boolean create = glowTextureId == -1;
         if (create) {
-            glowTextureId = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, glowTextureId);
+            glowTextureId = GlTextures.create();
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
@@ -244,6 +245,7 @@ public class MapRegion implements PixelSource {
         }
         long now = System.currentTimeMillis();
         if (create || glowDirty && now - lastGlowUpload >= GLOW_UPLOAD_INTERVAL_MS) {
+            GlTextures.bindForUpload(glowTextureId);
             glowDirty = false;
             lastGlowUpload = now;
             if (uploadBuffer == null) {
@@ -287,8 +289,7 @@ public class MapRegion implements PixelSource {
     public void bindShadowTexture(int missingNeighbors) {
         boolean create = shadowTextureId == -1;
         if (create) {
-            shadowTextureId = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, shadowTextureId);
+            shadowTextureId = GlTextures.create();
             // Linear both ways: a texel covers 4x4 blocks, the shadow must look smooth, not blocky.
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
@@ -300,6 +301,7 @@ public class MapRegion implements PixelSource {
         long now = System.currentTimeMillis();
         boolean stale = shadowChanges != changes || shadowNeighbors != missingNeighbors;
         if (create || stale && now - lastShadowUpload >= SHADOW_UPLOAD_INTERVAL_MS) {
+            GlTextures.bindForUpload(shadowTextureId);
             shadowChanges = changes;
             shadowNeighbors = missingNeighbors;
             lastShadowUpload = now;
@@ -457,8 +459,7 @@ public class MapRegion implements PixelSource {
      */
     public void bindTexture() {
         if (textureId == -1) {
-            textureId = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
+            textureId = GlTextures.create();
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
             // Crisp pixels when zoomed in, smooth mipmapped filtering (no flicker while panning) when zoomed out.
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
@@ -500,6 +501,7 @@ public class MapRegion implements PixelSource {
             lastUpload = now;
             int width = dirtyMaxX - dirtyMinX + 1, height = dirtyMaxZ - dirtyMinZ + 1;
             long start = System.nanoTime();
+            GlTextures.bindForUpload(textureId);
             upload(dirtyMinX, dirtyMinZ, width, height);
             if (FlatLog.on()) {
                 long end = System.nanoTime();
@@ -541,17 +543,17 @@ public class MapRegion implements PixelSource {
 
     public void deleteTexture() {
         if (textureId != -1) {
-            GL11.glDeleteTextures(textureId);
+            GlTextures.delete(textureId);
             textureId = -1;
             dirtyMaxX = -1;
             dirtyMinX = 0;
         }
         if (glowTextureId != -1) {
-            GL11.glDeleteTextures(glowTextureId);
+            GlTextures.delete(glowTextureId);
             glowTextureId = -1;
         }
         if (shadowTextureId != -1) {
-            GL11.glDeleteTextures(shadowTextureId);
+            GlTextures.delete(shadowTextureId);
             shadowTextureId = -1;
             shadowChanges = -1;
         }
