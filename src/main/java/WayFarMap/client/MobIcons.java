@@ -71,7 +71,7 @@ public final class MobIcons {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, Integer> eldest) {
             if (size() > MAX_ICONS) {
-                GL11.glDeleteTextures(eldest.getValue());
+                GlTextures.delete(eldest.getValue());
                 return true;
             }
             return false;
@@ -98,7 +98,7 @@ public final class MobIcons {
      */
     public static void reset() {
         for (int old : ICONS.values()) {
-            GL11.glDeleteTextures(old);
+            GlTextures.delete(old);
         }
         ICONS.clear();
         FAILED.clear();
@@ -144,7 +144,7 @@ public final class MobIcons {
             // Made again in each world: a resource pack or a mod's skins may have changed.
             iconWorld = world;
             for (int old : ICONS.values()) {
-                GL11.glDeleteTextures(old);
+                GlTextures.delete(old);
             }
             ICONS.clear();
             FAILED.clear();
@@ -669,8 +669,7 @@ public final class MobIcons {
      */
     private static int upload(int[] pixels) {
         bleed(pixels, ICON);
-        int texture = GL11.glGenTextures();
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        int texture = GlTextures.create();
         int levels = 0;
         int[] level = pixels;
         for (int side = ICON;; side /= 2, levels++) {

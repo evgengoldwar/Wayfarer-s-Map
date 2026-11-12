@@ -13,6 +13,7 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL14;
 
 import WayFarMap.Config;
+import WayFarMap.client.GlTextures;
 
 /**
  * Topographic view: land in flat bands of height (hypsometric tints, from green lowlands through yellow and brown
@@ -215,7 +216,7 @@ public final class Topography {
         while (it.hasNext()) {
             Overlay overlay = it.next();
             if (overlay.textureId != -1) {
-                GL11.glDeleteTextures(overlay.textureId);
+                GlTextures.delete(overlay.textureId);
             }
             it.remove();
         }
@@ -225,7 +226,7 @@ public final class Topography {
     static void forget(PixelSource source) {
         Overlay overlay = OVERLAYS.remove(source);
         if (overlay != null && overlay.textureId != -1) {
-            GL11.glDeleteTextures(overlay.textureId);
+            GlTextures.delete(overlay.textureId);
         }
     }
 
@@ -252,8 +253,7 @@ public final class Topography {
             buildsLeft--;
         }
         if (overlay.textureId == -1) {
-            overlay.textureId = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, overlay.textureId);
+            overlay.textureId = GlTextures.create();
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
@@ -263,7 +263,7 @@ public final class Topography {
         }
         if (stale) {
             build(region, nether);
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, overlay.textureId);
+            GlTextures.bindForUpload(overlay.textureId);
             GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 4);
             GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 0);
             GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 0);

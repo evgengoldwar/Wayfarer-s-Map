@@ -54,6 +54,7 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GLContext;
 
 import WayFarMap.WayFarMap;
+import WayFarMap.client.GlTextures;
 import WayFarMap.client.map.ChunkScanner;
 
 /**
@@ -2882,8 +2883,7 @@ final class FaceRenderer {
     /** A texture of one white pixel (render thread). */
     private static int whiteTexture() {
         if (whiteTexture < 0) {
-            whiteTexture = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, whiteTexture);
+            whiteTexture = GlTextures.create();
             java.nio.ByteBuffer white = BufferUtils.createByteBuffer(4);
             white.put((byte) -1)
                 .put((byte) -1)

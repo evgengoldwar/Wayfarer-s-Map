@@ -43,12 +43,11 @@ final class PlayerMarkerTexture {
         if (TEXTURES.size() >= CACHED) {
             Iterator<Integer> eldest = TEXTURES.values()
                 .iterator();
-            GL11.glDeleteTextures(eldest.next());
+            GlTextures.delete(eldest.next());
             eldest.remove();
         }
-        id = GL11.glGenTextures();
+        id = GlTextures.create();
         TEXTURES.put(key, id);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, id);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
