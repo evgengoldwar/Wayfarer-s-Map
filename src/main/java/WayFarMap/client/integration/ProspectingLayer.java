@@ -605,10 +605,32 @@ public final class ProspectingLayer {
         // About one texture pixel of the icon, on whole screen pixels.
         double pad = Math.max(pixel, Math.round(size / 16 / pixel) * pixel);
         begin();
+        OreVeinLocation trackedVein = null;
         for (OreVeinLocation vein : visible) {
             double sx = x + (vein.getBlockX() - left) * scale - half;
             double sy = y + (vein.getBlockZ() - top) * scale - half;
             hollowRect(sx - pad, sy - pad, size + 2 * pad, size + 2 * pad, pad, FRAME_COLOR, 255, x, y, width, height);
+            if (trackedVein == null && tracked != null && isTrackedLocation(vein)) {
+                trackedVein = vein;
+            }
+        }
+        if (trackedVein != null) {
+            // The tracked vein: a thick gold frame around the black one, seen on any map.
+            double sx = x + (trackedVein.getBlockX() - left) * scale - half - pad;
+            double sy = y + (trackedVein.getBlockZ() - top) * scale - half - pad;
+            double gold = Math.max(2 * pixel, pad * 2);
+            hollowRect(
+                sx - gold,
+                sy - gold,
+                size + 2 * pad + 2 * gold,
+                size + 2 * pad + 2 * gold,
+                gold,
+                TRACKED_COLOR,
+                255,
+                x,
+                y,
+                width,
+                height);
         }
         end();
 

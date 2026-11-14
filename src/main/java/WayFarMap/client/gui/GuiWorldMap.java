@@ -3300,10 +3300,17 @@ public class GuiWorldMap extends ScaledScreen {
             return;
         }
         if (button == 0 && doubleClicked(mouseX, mouseY)) {
-            // Double click: on a waypoint its editor, elsewhere a new waypoint at the block under the mouse.
+            // Double click: on a waypoint its editor, on an ore vein tracking it (or no longer), elsewhere a new
+            // waypoint at the block under the mouse.
             dragging = false;
             Waypoint hovered = waypointAt(mouseX, mouseY);
-            if (hovered == null) {
+            Object vein = hovered == null && !isoShown()
+                && !chunkloadShown()
+                && Mods.isVisualProspectingLoaded()
+                && Config.showOreVeins ? ProspectingLayer.getHoveredVein() : null;
+            if (vein != null) {
+                ProspectingLayer.toggleTracked(vein);
+            } else if (hovered == null) {
                 newWaypointAtMouse(mouseX, mouseY);
             } else if (!hovered.isForeign()) {
                 mc.displayGuiScreen(GuiEditWaypoint.edit(this, hovered));
