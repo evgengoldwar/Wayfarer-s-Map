@@ -145,7 +145,7 @@ Cave mode shows §fa layer underground§r instead of the surface.
 Needs the §fVisualProspecting§r mod (GTNH). Turned on with the §bOres§r and §bFluids§r checkboxes in the §bMod layers§r menu (layers icon, top left) — they are §fexclusive§r, only one is on.
 
 - Hover a vein — a tooltip with its ores
-- §eRight click a vein → Track§r — a marker with distance appears in the world
+- §eRight click a vein → Track§r or §edouble click§r it — a marker with distance appears in the world; on the map the tracked vein has a §6gold frame§r (double click again to stop)
 - §eRight click a vein → Depleted§r — marks the vein as mined out (drawn dim)
 - The search at the top finds ores and fluids by name
 
