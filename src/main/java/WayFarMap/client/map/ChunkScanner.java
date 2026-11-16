@@ -193,6 +193,24 @@ public final class ChunkScanner {
     private static int detailedColor(World world, Chunk chunk, int[][] heights, int lx, int y, int lz, int rgb,
         boolean plants) {
         int plant = plantColor(world, chunk, lx, y, lz, plants);
+        if (plant < 0) {
+            int seen = seenThroughGlass(chunk, lx, y, lz);
+            if (seen != y) {
+                plant = plantColor(world, chunk, lx, seen, lz, plants);
+                if (plant >= 0) {
+                    // Plants under glass replace the ground too, keeping the roof's tint.
+                    Block glass = chunk.getBlock(lx, y, lz);
+                    int glassColor = BlockColors.getColor(
+                        world,
+                        glass,
+                        chunk.getBlockMetadata(lx, y, lz),
+                        chunk.xPosition * 16 + lx,
+                        y,
+                        chunk.zPosition * 16 + lz);
+                    plant = BlockColors.blend(plant, glassColor, GLASS_TINT);
+                }
+            }
+        }
         if (plant >= 0) {
             return BlockColors.shade(plant, DAYLIGHT);
         }
