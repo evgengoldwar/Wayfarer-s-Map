@@ -20,6 +20,7 @@ import com.dyonovan.tcnodetracker.lib.JsonUtils;
 import com.dyonovan.tcnodetracker.lib.NodeList;
 
 import WayFarMap.client.Lang;
+import WayFarMap.client.gui.ui.ScaledScreen;
 import WayFarMap.client.waypoint.WaypointRenderer;
 import thaumcraft.api.aspects.Aspect;
 
@@ -39,6 +40,8 @@ public final class ThaumcraftNodes {
     private static final ResourceLocation NODE_TRACKED = new ResourceLocation(
         "tcnodetracker",
         "textures/gui/node_marked.png");
+    /** TCNodeTracker's JourneyMap marker dimensions, in screen pixels. */
+    private static final int ICON_SIZE = 44, ASPECT_SIZE = 32;
     private static final int SEARCH_COLOR = 0xFFD34D;
     private static final int LABEL_BACKGROUND = 0xB4000000;
 
@@ -194,10 +197,10 @@ public final class ThaumcraftNodes {
         }
         double left = centerX - width / 2.0 / scale;
         double top = centerZ - height / 2.0 / scale;
-        // On the world map zoomed in, the icon grows to cover the node's block (up to 64 pixels), so it isn't
-        // a speck.
+        // Keep JourneyMap's 44-pixel marker readable even when zoomed out, at any UI scale. When zoomed in,
+        // it can still grow to cover the node's block (up to 64 GUI pixels).
         double size = minimap ? 9
-            : Math.max(Math.max(10, Math.min(18, 14 * Math.pow(scale, 0.3))), Math.min(64, scale));
+            : Math.max(ICON_SIZE / (double) ScaledScreen.currentFactor(), Math.min(64, scale));
         double half = size / 2;
         boolean searching = searchTokens.length > 0;
 
@@ -235,7 +238,7 @@ public final class ThaumcraftNodes {
                     continue;
                 }
                 boolean dim = searching && !matches(node);
-                tessellator.setColorRGBA_I(tracked ? 0xFFFFFF : node.color(), dim ? 70 : 204);
+                tessellator.setColorRGBA_I(tracked ? 0xFFFFFF : node.color(), dim ? 70 : 255);
                 quad(tessellator, positions.get(i), half);
             }
             tessellator.draw();
@@ -252,7 +255,7 @@ public final class ThaumcraftNodes {
                 .bindTexture(image);
             tessellator.startDrawingQuads();
             tessellator.setColorRGBA_I(node.color(), dim ? 90 : 255);
-            quad(tessellator, positions.get(i), half * 0.7);
+            quad(tessellator, positions.get(i), half * ASPECT_SIZE / ICON_SIZE);
             tessellator.draw();
         }
         if (searching) {
