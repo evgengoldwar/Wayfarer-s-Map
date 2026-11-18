@@ -571,11 +571,7 @@ public final class ProspectingLayer {
         double left = centerX - width / 2.0 / scale;
         double top = centerZ - height / 2.0 / scale;
         double zoom = zoomLevel(scale);
-        double veinSpacing = VP.oreVeinSizeChunkX * VP.chunkWidth * scale;
-        // On the world map the icons keep growing when zooming in past 1:1 (up to 64 pixels), so the ores can be told
-        // apart up close instead of staying 16 pixels on blocks of 16 or more.
-        double size = minimap ? Math.max(5, Math.min(10, veinSpacing * 0.6))
-            : Math.max(6, Math.min(Math.min(64, 16 * Math.max(1, Math.sqrt(scale))), veinSpacing * 0.6));
+        double size = oreIconSize(scale, minimap);
         double half = size / 2;
         Minecraft mc = Minecraft.getMinecraft();
         FontRenderer font = mc.fontRenderer;
@@ -755,6 +751,46 @@ public final class ProspectingLayer {
     public static Object getHoveredVein() {
         OreVeinPosition position = hovered == null ? null : positions.get(hovered);
         return position == null ? null : new Handle(hovered, position);
+    }
+
+    private static double oreIconSize(double scale, boolean minimap) {
+        double veinSpacing = VP.oreVeinSizeChunkX * VP.chunkWidth * scale;
+        // Keep the input hitbox identical to the rendered icon at every zoom level.
+        return minimap ? Math.max(5, Math.min(10, veinSpacing * 0.6))
+            : Math.max(6, Math.min(Math.min(64, 16 * Math.max(1, Math.sqrt(scale))), veinSpacing * 0.6));
+    }
+
+    /** Resolves input against the current view, independently of the last map or minimap render. */
+    public static Object getVeinAt(int dimension, double centerX, double centerZ, double scale, int width,
+        int height, int mouseX, int mouseY) {
+        if (scale <= 0 || mouseX < 0 || mouseY < 0 || mouseX >= width || mouseY >= height) {
+            return null;
+        }
+        refreshVeins(dimension);
+        double left = centerX - width / 2.0 / scale;
+        double top = centerZ - height / 2.0 / scale;
+        double half = oreIconSize(scale, false) / 2;
+        double blockX = left + mouseX / scale;
+        double blockZ = top + mouseY / scale;
+        Object result = null;
+        for (OreVeinLocation vein : veinsNear(
+            blockX - half / scale,
+            blockZ - half / scale,
+            blockX + half / scale,
+            blockZ + half / scale)) {
+            double sx = (vein.getBlockX() - left) * scale;
+            double sy = (vein.getBlockZ() - top) * scale;
+            if (sx - half < 0 || sy - half < 0 || sx + half > width || sy + half > height) {
+                continue;
+            }
+            if (mouseX >= sx - half && mouseX <= sx + half && mouseY >= sy - half && mouseY <= sy + half) {
+                OreVeinPosition position = positions.get(vein);
+                if (position != null) {
+                    result = new Handle(vein, position);
+                }
+            }
+        }
+        return result;
     }
 
     /** A vein kept by a caller; stays valid when the vein list is rebuilt. */

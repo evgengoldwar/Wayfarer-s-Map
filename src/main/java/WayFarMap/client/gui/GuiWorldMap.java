@@ -4070,8 +4070,14 @@ public class GuiWorldMap extends ScaledScreen {
             && !chunkloadShown()
             && Mods.isVisualProspectingLoaded()
             && Config.showOreVeins) {
-            // Del on an ore vein marks it depleted (or not depleted again), as its menu does.
-            Object vein = ProspectingLayer.getHoveredVein();
+            // Text editing above still receives repeats; a held Del must toggle a vein only once.
+            if (Keyboard.isRepeatEvent() || menu != null || dimensionList != null) {
+                return;
+            }
+            int mouseX = Mouse.getX() * width / mc.displayWidth;
+            int mouseY = height - Mouse.getY() * height / mc.displayHeight - 1;
+            Object vein = ProspectingLayer
+                .getVeinAt(viewDimension(), centerX, centerZ, scale, width, height, mouseX, mouseY);
             if (vein != null) {
                 menu = null;
                 ProspectingLayer.toggleDepleted(vein);
