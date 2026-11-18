@@ -2424,7 +2424,7 @@ public class GuiWorldMap extends ScaledScreen {
                         ProspectingLayer.isDepleted(vein) ? "wayfarmap.gui.vein_restore"
                             : "wayfarmap.gui.vein_deplete"),
                     true,
-                    () -> ProspectingLayer.toggleDepleted(vein)).hint("Del"));
+                    () -> ProspectingLayer.toggleDepleted(vein)).hint("Del / Backspace"));
         }
         int[] block = blockAt(mouseX, mouseY);
         final int bx = block[0];
@@ -4066,7 +4066,8 @@ public class GuiWorldMap extends ScaledScreen {
                 height - Mouse.getY() * height / mc.displayHeight - 1);
             return;
         }
-        if (keyCode == Keyboard.KEY_DELETE && !isoShown()
+        // MacBook Delete sends KEY_BACK; Fn+Delete and a PC Delete key send KEY_DELETE.
+        if ((keyCode == Keyboard.KEY_DELETE || keyCode == Keyboard.KEY_BACK) && !isoShown()
             && !chunkloadShown()
             && Mods.isVisualProspectingLoaded()
             && Config.showOreVeins) {
