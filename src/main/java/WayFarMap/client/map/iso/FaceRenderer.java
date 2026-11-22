@@ -1956,6 +1956,27 @@ final class FaceRenderer {
         drawBatch(world, batch, palette, false);
     }
 
+    /** The light map unit's texture while a batch is drawn, put back after it; -1 when none is held. */
+    private static int previousLightmap = -1;
+
+    /**
+     * Draws standard blocks without smooth lighting, as the game does with it switched off, without switching the
+     * game's setting (chunk building threads read it while the map takes its pictures).
+     */
+    static final class FlatRenderBlocks extends RenderBlocks {
+
+        FlatRenderBlocks(net.minecraft.world.IBlockAccess world) {
+            super(world);
+        }
+
+        @Override
+        public boolean renderStandardBlock(net.minecraft.block.Block block, int x, int y, int z) {
+            int color = block.colorMultiplier(this.blockAccess, x, y, z);
+            float r = (color >> 16 & 255) / 255f, g = (color >> 8 & 255) / 255f, b = (color & 255) / 255f;
+            return renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b);
+        }
+    }
+
     /**
      * Draws the batch's pictures and reads them back: at once, or, if {@code async}, into a pixel buffer object read
      * out the next tick ({@link #finishFlights}). Returns the batch then, null if it was read (or failed) now.
@@ -1966,7 +1987,6 @@ final class FaceRenderer {
         long setupStart = System.nanoTime();
         Minecraft mc = Minecraft.getMinecraft();
         Tessellator tessellator = Tessellator.instance;
-        int ambientOcclusion = mc.gameSettings.ambientOcclusion;
         int previousFramebuffer = GL11.glGetInteger(OwnFramebuffer.BINDING);
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
         GL11.glMatrixMode(GL11.GL_PROJECTION);
@@ -1990,13 +2010,16 @@ final class FaceRenderer {
             // No light map: every block fully lit, the tracer adds the light of the place. Renderers turning it on
             // themselves (SGCraft's) get a white one: the game's own is tinted by the time of day (blue at night).
             OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+            previousLightmap = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, whiteTexture());
             GL11.glDisable(GL11.GL_TEXTURE_2D);
             OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
             GL11.glEnable(GL11.GL_TEXTURE_2D);
-            // Smooth lighting would darken corners by the light around; the sprites are taken unlit.
-            mc.gameSettings.ambientOcclusion = 0;
-            RenderBlocks renderBlocks = new RenderBlocks(world);
+            // Smooth lighting would darken corners by the light around; the sprites are taken unlit. Never by turning
+            // the game's setting off for the while: renderers building chunks on other threads (Angelica's) read it
+            // at the same time, and sections built meanwhile came out without smooth lighting (brighter) until they
+            // were built again, which showed as leaves and foliage flickering while the map took pictures.
+            RenderBlocks renderBlocks = new FlatRenderBlocks(world);
             long drawStart = System.nanoTime();
             setupNanos += drawStart - setupStart;
 
@@ -2125,7 +2148,13 @@ final class FaceRenderer {
         } finally {
             // Off whatever happened: a clip plane left on clips (or, on OpenGL ES, crashes) the game's own drawing.
             disableClipPlanes();
-            mc.gameSettings.ambientOcclusion = ambientOcclusion;
+            if (previousLightmap >= 0) {
+                // The light map unit's own texture back (the white one was bound there for the pictures)
+                OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, previousLightmap);
+                OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+                previousLightmap = -1;
+            }
             if (bound) {
                 // Back to the buffer bound before (the game's own while a frame is drawn).
                 OwnFramebuffer.bind(previousFramebuffer);
