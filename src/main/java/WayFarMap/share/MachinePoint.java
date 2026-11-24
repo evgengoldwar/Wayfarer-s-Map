@@ -3,8 +3,9 @@ package WayFarMap.share;
 import io.netty.buffer.ByteBuf;
 
 /**
- * A machine with a coverage, for the map: a wireless charger ({@link Chargers#KIND_GT}, {@link Chargers#KIND_ENDERIO})
- * or a drone centre ({@link DroneCentres#KIND}). Where it is, its tier (a GregTech charger's voltage tier, a drone
+ * A machine with a coverage, for the map: a wireless charger ({@link Chargers#KIND_GT}, {@link Chargers#KIND_ENDERIO}),
+ * a drone centre ({@link DroneCentres#KIND}), a mob guard ({@link MobGuards}) or a flight zone ({@link FlightZones}).
+ * Where it is, its tier (a GregTech charger's voltage tier, a drone
  * centre's drone level), a GregTech charger's mode ({@link Chargers#MODE_UNKNOWN} when not known), its range in
  * blocks and whether it works.
  */

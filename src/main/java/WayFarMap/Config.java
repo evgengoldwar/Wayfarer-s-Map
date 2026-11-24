@@ -111,7 +111,7 @@ public class Config {
     public static int minimapView = MINIMAP_VIEW_FLAT, minimapLightMode = LIGHT_AUTO;
     public static boolean minimapOreVeins = true, minimapUndergroundFluids, minimapClaims, minimapPowerfails = true,
         minimapThaumcraftNodes = true, minimapWireless = true, minimapChargers = true, minimapDrones = true,
-        minimapGuards = true;
+        minimapGuards = true, minimapFlight = true;
     public static boolean minimapChunkGrid;
     public static boolean minimapPlayers = true, minimapHostileMobs = true, minimapPassiveMobs = true,
         minimapAmbientMobs = true, minimapOtherEntities = true, minimapPets = true;
@@ -242,6 +242,8 @@ public class Config {
     public static boolean showDrones = true, dronesFullRange = true;
     /** Monster Repellators and Magnum Torches (only used when either is installed), and their full range ring. */
     public static boolean showGuards = true, guardsFullRange = true;
+    /** MagLev Pylons and Thaumostatic Spires (only used when either is installed), and their full range outline. */
+    public static boolean showFlight = true, flightFullRange = true;
     /** Share the explored map with the ServerUtilities team (where the server has the mod). */
     public static boolean shareMapWithTeam = true;
     public static boolean useTextureColors = true;
@@ -550,6 +552,13 @@ public class Config {
             true,
             () -> minimapGuards,
             v -> minimapGuards = v);
+        bool(
+            c,
+            "layerFlight",
+            "MagLev Pylons and Thaumostatic Spires on the minimap.",
+            true,
+            () -> minimapFlight,
+            v -> minimapFlight = v);
         tab(null);
         group("ownGrid");
         parent("enabled");
@@ -1129,6 +1138,24 @@ public class Config {
             () -> guardsFullRange,
             v -> guardsFullRange = v);
         parent(null);
+        group("flight");
+        bool(
+            c,
+            "flight",
+            "Show where GregTech MagLev Pylons let players fly and Automagy Thaumostatic Spires refuel thaumostatic "
+                + "harnesses, on the maps (if either is installed).",
+            true,
+            () -> showFlight,
+            v -> showFlight = v);
+        parent("flight");
+        bool(
+            c,
+            "flightFullRange",
+            "A thin outline of a MagLev Pylon's whole square where your height is out of its reach.",
+            true,
+            () -> flightFullRange,
+            v -> flightFullRange = v);
+        parent(null);
         tab(TAB_MAP_2D);
         group("data");
         parent(null);
@@ -1647,7 +1674,8 @@ public class Config {
             "wireless",
             "chargers",
             "drones",
-            "guards");
+            "guards",
+            "flight");
         hideFromSettings(
             CATEGORY_ENTITIES,
             "showOtherPlayers",
@@ -1758,6 +1786,11 @@ public class Config {
 
     public static void toggleGuards() {
         showGuards = !showGuards;
+        save();
+    }
+
+    public static void toggleFlight() {
+        showFlight = !showFlight;
         save();
     }
 
@@ -1921,6 +1954,10 @@ public class Config {
         return minimap && minimapOwnLayers ? minimapGuards : showGuards;
     }
 
+    public static boolean flight(boolean minimap) {
+        return minimap && minimapOwnLayers ? minimapFlight : showFlight;
+    }
+
     public static boolean chargers(boolean minimap) {
         return minimap && minimapOwnLayers ? minimapChargers : showChargers;
     }
@@ -1976,6 +2013,7 @@ public class Config {
             minimapChargers = showChargers;
             minimapDrones = showDrones;
             minimapGuards = showGuards;
+            minimapFlight = showFlight;
             minimapOwnLayers = true;
         }
     }

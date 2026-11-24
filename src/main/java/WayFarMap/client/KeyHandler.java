@@ -65,6 +65,7 @@ public class KeyHandler {
     public static final KeyBinding CHARGERS = unbound("chargers");
     public static final KeyBinding DRONES = unbound("drones");
     public static final KeyBinding GUARDS = unbound("guards");
+    public static final KeyBinding FLIGHT = unbound("flight");
     public static final KeyBinding CHUNK_GRID = unbound("chunk_grid");
     public static final KeyBinding HOSTILE_MOBS = unbound("hostile_mobs");
     public static final KeyBinding PASSIVE_MOBS = unbound("passive_mobs");
@@ -88,6 +89,7 @@ public class KeyHandler {
     public static final KeyBinding MINIMAP_CHARGERS = unbound("minimap_chargers", CATEGORY_MINIMAP);
     public static final KeyBinding MINIMAP_DRONES = unbound("minimap_drones", CATEGORY_MINIMAP);
     public static final KeyBinding MINIMAP_GUARDS = unbound("minimap_guards", CATEGORY_MINIMAP);
+    public static final KeyBinding MINIMAP_FLIGHT = unbound("minimap_flight", CATEGORY_MINIMAP);
     public static final KeyBinding MINIMAP_CHUNK_GRID = unbound("minimap_chunk_grid", CATEGORY_MINIMAP);
     public static final KeyBinding MINIMAP_HOSTILE_MOBS = unbound("minimap_hostile_mobs", CATEGORY_MINIMAP);
     public static final KeyBinding MINIMAP_PASSIVE_MOBS = unbound("minimap_passive_mobs", CATEGORY_MINIMAP);
@@ -98,12 +100,12 @@ public class KeyHandler {
     public static final KeyBinding MINIMAP_LIGHT = unbound("minimap_light", CATEGORY_MINIMAP);
 
     private static final KeyBinding[] UNBOUND = { MODE_BLOCKS, MODE_PLANTLESS, MODE_TOPO, MODE_BIOMES, ORES, FLUIDS,
-        CLAIMS, POWERFAILS, NODES, WIRELESS, CHARGERS, DRONES, GUARDS, CHUNK_GRID, HOSTILE_MOBS, PASSIVE_MOBS,
+        CLAIMS, POWERFAILS, NODES, WIRELESS, CHARGERS, DRONES, GUARDS, FLIGHT, CHUNK_GRID, HOSTILE_MOBS, PASSIVE_MOBS,
         AMBIENT_MOBS, FRIENDLY_MOBS, PETS, PLAYERS, LIGHT, MINIMAP_MODE_BLOCKS, MINIMAP_MODE_PLANTLESS,
         MINIMAP_MODE_TOPO, MINIMAP_MODE_BIOMES, MINIMAP_ORES, MINIMAP_FLUIDS, MINIMAP_CLAIMS, MINIMAP_POWERFAILS,
-        MINIMAP_NODES, MINIMAP_WIRELESS, MINIMAP_CHARGERS, MINIMAP_DRONES, MINIMAP_GUARDS, MINIMAP_CHUNK_GRID,
-        MINIMAP_HOSTILE_MOBS, MINIMAP_PASSIVE_MOBS, MINIMAP_AMBIENT_MOBS, MINIMAP_FRIENDLY_MOBS, MINIMAP_PETS,
-        MINIMAP_PLAYERS, MINIMAP_LIGHT };
+        MINIMAP_NODES, MINIMAP_WIRELESS, MINIMAP_CHARGERS, MINIMAP_DRONES, MINIMAP_GUARDS, MINIMAP_FLIGHT,
+        MINIMAP_CHUNK_GRID, MINIMAP_HOSTILE_MOBS, MINIMAP_PASSIVE_MOBS, MINIMAP_AMBIENT_MOBS, MINIMAP_FRIENDLY_MOBS,
+        MINIMAP_PETS, MINIMAP_PLAYERS, MINIMAP_LIGHT };
 
     private static final String[] CAVE_MODE_KEYS = { "auto", "off", "on" };
     private static final String[] LIGHT_MODE_KEYS = { "auto", "day", "night" };
@@ -249,6 +251,10 @@ public class KeyHandler {
             Config.toggleGuards();
             tell(mc, GUARDS, Config.showGuards);
         }
+        if (FLIGHT.isPressed() && installed(mc, FLIGHT, Mods.isFlightAvailable())) {
+            Config.toggleFlight();
+            tell(mc, FLIGHT, Config.showFlight);
+        }
         if (CHUNK_GRID.isPressed()) {
             Config.toggleChunkGrid();
             tell(mc, CHUNK_GRID, Config.chunkGrid);
@@ -361,6 +367,9 @@ public class KeyHandler {
         }
         if (MINIMAP_GUARDS.isPressed() && installed(mc, MINIMAP_GUARDS, Mods.isGuardsAvailable())) {
             minimapToggle(mc, MINIMAP_GUARDS, layers, () -> Config.minimapGuards, on -> Config.minimapGuards = on);
+        }
+        if (MINIMAP_FLIGHT.isPressed() && installed(mc, MINIMAP_FLIGHT, Mods.isFlightAvailable())) {
+            minimapToggle(mc, MINIMAP_FLIGHT, layers, () -> Config.minimapFlight, on -> Config.minimapFlight = on);
         }
         if (MINIMAP_CHUNK_GRID.isPressed()) {
             minimapToggle(

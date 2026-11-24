@@ -21,16 +21,25 @@ import org.lwjgl.opengl.GL11;
  * first circle that reaches it and skipped by the others; the stencil buffer would be the usual way, but in 1.7.10
  * the window often has none. The depth of the filled pixels is reset to the far value before and after, so what is
  * drawn around the layer isn't affected.
+ * <p>
+ * A {@link Circle#square} is a square of that half side (a MagLev Pylon's cube): joined the same way with the squares
+ * of its layer, the parts of its sides that have another square just outside them cut out.
  */
 public final class CoverageDrawer {
 
-    /** One circle, in screen pixels. */
+    /** One circle (or a square of that half side), in screen pixels. */
     static final class Circle {
 
         final double x, y, full, slice;
         final int rgb, fillAlpha, priority;
+        final boolean square;
 
         Circle(double x, double y, double full, double slice, int rgb, int fillAlpha, int priority) {
+            this(x, y, full, slice, rgb, fillAlpha, priority, false);
+        }
+
+        Circle(double x, double y, double full, double slice, int rgb, int fillAlpha, int priority, boolean square) {
+            this.square = square;
             this.x = x;
             this.y = y;
             this.full = full;
@@ -73,19 +82,31 @@ public final class CoverageDrawer {
         List<List<double[]>> sliceArcs = new ArrayList<>(), fullArcs = new ArrayList<>();
         for (int i = 0; i < layer.size(); i++) {
             Circle c = layer.get(i);
-            sliceArcs.add(c.slice > 0.5 ? visibleArcs(layer, i, true) : Collections.emptyList());
-            fullArcs.add(fullRange && c.full - c.slice > 1 ? visibleArcs(layer, i, false) : Collections.emptyList());
+            boolean slice = c.slice > 0.5, full = fullRange && c.full - c.slice > 1;
+            if (c.square) {
+                sliceArcs.add(slice ? visibleSides(layer, i, true) : Collections.emptyList());
+                fullArcs.add(full ? visibleSides(layer, i, false) : Collections.emptyList());
+            } else {
+                sliceArcs.add(slice ? visibleArcs(layer, i, true) : Collections.emptyList());
+                fullArcs.add(full ? visibleArcs(layer, i, false) : Collections.emptyList());
+            }
         }
         // Each line over a dark one a bit wider, so it reads on any terrain.
         float lineWidth = minimap ? 1.5f : 2f;
         for (int pass = 0; pass < 2; pass++) {
             boolean backing = pass == 0;
-            GL11.glLineWidth(backing ? lineWidth + 2 : lineWidth);
+            float width = backing ? lineWidth + 2 : lineWidth;
+            GL11.glLineWidth(width);
             for (int i = 0; i < layer.size(); i++) {
                 Circle c = layer.get(i);
                 int rgb = backing ? 0x000000 : c.rgb;
-                arcs(tessellator, c.x, c.y, c.full, fullArcs.get(i), rgb, backing ? 60 : 130);
-                arcs(tessellator, c.x, c.y, c.slice, sliceArcs.get(i), rgb, backing ? 120 : 235);
+                if (c.square) {
+                    sides(tessellator, fullArcs.get(i), width / 2, rgb, backing ? 60 : 130);
+                    sides(tessellator, sliceArcs.get(i), width / 2, rgb, backing ? 120 : 235);
+                } else {
+                    arcs(tessellator, c.x, c.y, c.full, fullArcs.get(i), rgb, backing ? 60 : 130);
+                    arcs(tessellator, c.x, c.y, c.slice, sliceArcs.get(i), rgb, backing ? 120 : 235);
+                }
             }
         }
     }
@@ -100,7 +121,12 @@ public final class CoverageDrawer {
      * all the layers: a later layer's fill (a big red circle) would tint it otherwise.
      */
     static void highlight(double x, double y, double full, double slice, int rgb, boolean fullRange, boolean minimap) {
-        HIGHLIGHTS.add(() -> drawHighlight(x, y, full, slice, lighter(rgb), fullRange, minimap));
+        highlight(x, y, full, slice, rgb, fullRange, minimap, false);
+    }
+
+    static void highlight(double x, double y, double full, double slice, int rgb, boolean fullRange, boolean minimap,
+        boolean square) {
+        HIGHLIGHTS.add(() -> drawHighlight(x, y, full, slice, lighter(rgb), fullRange, minimap, square));
     }
 
     /**
@@ -127,7 +153,7 @@ public final class CoverageDrawer {
     }
 
     private static void drawHighlight(double x, double y, double full, double slice, int light, boolean fullRange,
-        boolean minimap) {
+        boolean minimap, boolean square) {
         Tessellator tessellator = Tessellator.instance;
         GL11.glDisable(GL11.GL_TEXTURE_2D);
         GL11.glEnable(GL11.GL_BLEND);
@@ -138,11 +164,20 @@ public final class CoverageDrawer {
             boolean backing = pass == 0;
             GL11.glLineWidth(backing ? width + 2 : width);
             int rgb = backing ? 0x000000 : light;
+            float half = (backing ? width + 2 : width) / 2;
             if (fullRange && full - slice > 1) {
-                arcs(tessellator, x, y, full, whole, rgb, backing ? 90 : 160);
+                if (square) {
+                    sides(tessellator, wholeSquare(x, y, full), half, rgb, backing ? 90 : 160);
+                } else {
+                    arcs(tessellator, x, y, full, whole, rgb, backing ? 90 : 160);
+                }
             }
             if (slice > 0.5) {
-                arcs(tessellator, x, y, slice, whole, rgb, backing ? 140 : 255);
+                if (square) {
+                    sides(tessellator, wholeSquare(x, y, slice), half, rgb, backing ? 140 : 255);
+                } else {
+                    arcs(tessellator, x, y, slice, whole, rgb, backing ? 140 : 255);
+                }
             }
         }
         GL11.glLineWidth(1f);
@@ -259,7 +294,7 @@ public final class CoverageDrawer {
         GL11.glDepthFunc(GL11.GL_LESS);
         for (Circle c : ordered) {
             if (c.slice > 0.5) {
-                fan(tessellator, c.x, c.y, c.slice, c.rgb, c.fillAlpha);
+                shape(tessellator, c, c.rgb, c.fillAlpha);
             }
         }
         resetDepth(tessellator, ordered);
@@ -279,10 +314,20 @@ public final class CoverageDrawer {
         GL11.glDepthFunc(GL11.GL_ALWAYS);
         for (Circle c : ordered) {
             if (c.slice > 0.5) {
-                fan(tessellator, c.x, c.y, c.slice, 0, 255);
+                shape(tessellator, c, 0, 255);
             }
         }
         GL11.glColorMask(true, true, true, true);
+    }
+
+    private static void shape(Tessellator tessellator, Circle c, int rgb, int alpha) {
+        if (c.square) {
+            tessellator.startDrawingQuads();
+            quad(tessellator, c.x - c.slice, c.y - c.slice, c.x + c.slice, c.y + c.slice, rgb, alpha);
+            tessellator.draw();
+        } else {
+            fan(tessellator, c.x, c.y, c.slice, rgb, alpha);
+        }
     }
 
     private static void fan(Tessellator tessellator, double cx, double cy, double r, int rgb, int alpha) {
@@ -309,7 +354,7 @@ public final class CoverageDrawer {
         List<double[]> hidden = new ArrayList<>();
         for (int j = 0; j < layer.size(); j++) {
             Circle o = layer.get(j);
-            if (j == i) {
+            if (j == i || o.square) {
                 continue;
             }
             double ro = slice ? o.slice : o.full;
@@ -389,6 +434,89 @@ public final class CoverageDrawer {
             }
             tessellator.draw();
         }
+    }
+
+    // ---------------------------------------------------------------- square outlines
+
+    /** Just outside a side, in pixels: what another square covers there hides that part of the side. */
+    private static final double OUTSIDE = 1e-3;
+
+    /**
+     * The parts of the sides of square i of the layer not inside another square of the layer, as
+     * {x0, y0, x1, y1, starts at a corner, ends at a corner}: lines get half their width more at the corners, so the
+     * corners close.
+     */
+    private static List<double[]> visibleSides(List<Circle> layer, int i, boolean slice) {
+        Circle c = layer.get(i);
+        double r = slice ? c.slice : c.full;
+        double left = c.x - r, right = c.x + r, top = c.y - r, bottom = c.y + r;
+        List<double[]> visible = new ArrayList<>();
+        side(layer, i, slice, visible, true, top - OUTSIDE, left, right, top);
+        side(layer, i, slice, visible, true, bottom + OUTSIDE, left, right, bottom);
+        side(layer, i, slice, visible, false, left - OUTSIDE, top, bottom, left);
+        side(layer, i, slice, visible, false, right + OUTSIDE, top, bottom, right);
+        return visible;
+    }
+
+    /** One side, from {@code from} to {@code to} along it, at {@code at} across; {@code outside} is just past it. */
+    private static void side(List<Circle> layer, int i, boolean slice, List<double[]> into, boolean horizontal,
+        double outside, double from, double to, double at) {
+        List<double[]> hidden = new ArrayList<>();
+        for (int j = 0; j < layer.size(); j++) {
+            Circle o = layer.get(j);
+            double ro = slice ? o.slice : o.full;
+            if (j == i || !o.square || ro <= 0.5) {
+                continue;
+            }
+            double across = horizontal ? o.y : o.x, along = horizontal ? o.x : o.y;
+            if (outside > across - ro && outside < across + ro) {
+                double a = Math.max(from, along - ro), b = Math.min(to, along + ro);
+                if (b > a) {
+                    hidden.add(new double[] { a, b });
+                }
+            }
+        }
+        hidden.sort((a, b) -> Double.compare(a[0], b[0]));
+        double pos = from;
+        for (double[] h : hidden) {
+            if (h[0] > pos) {
+                addSide(into, horizontal, at, pos, h[0], pos == from, false);
+            }
+            pos = Math.max(pos, h[1]);
+        }
+        if (pos < to) {
+            addSide(into, horizontal, at, pos, to, pos == from, true);
+        }
+    }
+
+    private static void addSide(List<double[]> into, boolean horizontal, double at, double from, double to,
+        boolean startCorner, boolean endCorner) {
+        into.add(
+            horizontal ? new double[] { from, at, to, at, startCorner ? 1 : 0, endCorner ? 1 : 0 }
+                : new double[] { at, from, at, to, startCorner ? 1 : 0, endCorner ? 1 : 0 });
+    }
+
+    private static List<double[]> wholeSquare(double x, double y, double r) {
+        List<double[]> sides = new ArrayList<>();
+        addSide(sides, true, y - r, x - r, x + r, true, true);
+        addSide(sides, true, y + r, x - r, x + r, true, true);
+        addSide(sides, false, x - r, y - r, y + r, true, true);
+        addSide(sides, false, x + r, y - r, y + r, true, true);
+        return sides;
+    }
+
+    private static void sides(Tessellator tessellator, List<double[]> sides, double extend, int rgb, int alpha) {
+        if (sides.isEmpty()) {
+            return;
+        }
+        tessellator.startDrawing(GL11.GL_LINES);
+        tessellator.setColorRGBA_I(rgb, alpha);
+        for (double[] s : sides) {
+            double dx = s[2] > s[0] ? 1 : 0, dy = s[3] > s[1] ? 1 : 0;
+            tessellator.addVertex(s[0] - dx * extend * s[4], s[1] - dy * extend * s[4], 0);
+            tessellator.addVertex(s[2] + dx * extend * s[5], s[3] + dy * extend * s[5], 0);
+        }
+        tessellator.draw();
     }
 
     /** Segments for an arc of that radius and angle: about 3 pixels each, at least a few. */

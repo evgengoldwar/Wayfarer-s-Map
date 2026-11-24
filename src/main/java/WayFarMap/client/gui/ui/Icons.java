@@ -164,6 +164,14 @@ public final class Icons {
     public static final String[] CHANDELIER = { "....#....", "....#....", "#.#.#.#.#", "#.#.#.#.#", "#########",
         ".#.....#.", "..#####.." };
 
+    /** Flight: a wing for the layer, a horseshoe magnet for a MagLev Pylon, a spire for a Thaumostatic Spire. */
+    public static final String[] FLIGHT = { "#........", "##.......", "###......", "####.....", ".####....",
+        "..#####..", "...######", "....#####", "......###" };
+    public static final String[] MAGLEV = { "##.....##", "##.....##", "##.....##", "##.....##", "##.....##",
+        ".##...##.", "..#####..", "...###..." };
+    public static final String[] SPIRE = { "....#....", "...###...", "....#....", "...###...", "...#.#...", "...###...",
+        "...#.#...", "..#####..", ".#######." };
+
     public static final String[] CLAIM = { // a shield
         "#########", "#.......#", "#.......#", "#.......#", ".#.....#.", ".#.....#.", "..#...#..", "...#.#...",
         "....#...." };

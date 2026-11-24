@@ -20,12 +20,13 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 
 /**
- * Server side of the wireless chargers, drone centres and mob protection layers. The server tells only about machines
+ * Server side of the wireless chargers, drone centres, mob protection and flight layers. The server tells only about
+ * machines
  * the client has
  * seen itself: the client sends where they are ({@link ShareNetwork.MachineAsk}) and gets, every couple of seconds,
  * what only the server knows about those of them in loaded chunks: a GregTech charger's mode and whether it charges
- * this player, the drone level on GregTech versions that don't send it, a Monster Repellator's range in force, the
- * energy. Nothing else is looked at, so no
+ * this player, the drone level on GregTech versions that don't send it, a Monster Repellator's or MagLev Pylon's
+ * range in force, the energy, a Thaumostatic Spire's Aer boost. Nothing else is looked at, so no
  * machine the player hasn't found is revealed, and no pass over all tile entities is needed.
  * <p>
  * A client that says {@link ShareNetwork#MACHINES_PROTOCOL} in its hello gets an empty list of each layer the server
@@ -38,7 +39,7 @@ public final class MachineServer {
     private static final int INTERVAL_TICKS = 40;
 
     public static boolean isActive() {
-        return chargers() || drones() || MobGuards.isRepellatorAvailable();
+        return chargers() || drones() || MobGuards.isRepellatorAvailable() || FlightZones.isAvailable();
     }
 
     private static boolean chargers() {
@@ -105,6 +106,9 @@ public final class MachineServer {
                 if (MobGuards.isRepellatorAvailable()) {
                     ShareNetwork.sendTo(new ShareNetwork.MachineList(ShareNetwork.MachineList.GUARDS), player);
                 }
+                if (FlightZones.isAvailable()) {
+                    ShareNetwork.sendTo(new ShareNetwork.MachineList(ShareNetwork.MachineList.FLIGHT), player);
+                }
             } else {
                 ShareNetwork.MachineAsk ask = (ShareNetwork.MachineAsk) entry[1];
                 List<int[]>[] layers = asked.get(id);
@@ -160,6 +164,8 @@ public final class MachineServer {
             }
             if (layer == ShareNetwork.MachineList.CHARGERS) {
                 charger(list, player, tile, p[0], enderIoRange);
+            } else if (layer == ShareNetwork.MachineList.FLIGHT) {
+                flight(list, tile, p[0]);
             } else if (layer == ShareNetwork.MachineList.GUARDS) {
                 Object repellator = MobGuards.repellator(tile);
                 if (repellator != null) {
@@ -233,6 +239,44 @@ public final class MachineServer {
                     Chargers.MODE_UNKNOWN,
                     (float) enderIoRange,
                     Chargers.enderIoActive(tile)));
+        }
+    }
+
+    /**
+     * A MagLev Pylon: tier, powered (0/1) as mode, the range in force. A Thaumostatic Spire's controller: the pylons as
+     * tier, boosted by Aer (0/1) as mode, its range, and whether it refuels.
+     */
+    private static void flight(ShareNetwork.MachineList list, TileEntity tile, int dimension) {
+        Object pylon = FlightZones.magLev(tile);
+        if (pylon != null) {
+            int tier = FlightZones.magLevTier(pylon), range = FlightZones.magLevRangeInForce(pylon);
+            boolean powered = range > 0 && range == FlightZones.magLevRange(tier, true);
+            list.points.add(
+                new MachinePoint(
+                    FlightZones.KIND_MAGLEV,
+                    dimension,
+                    tile.xCoord,
+                    tile.yCoord,
+                    tile.zCoord,
+                    tier,
+                    powered ? 1 : 0,
+                    Math.max(0, range),
+                    range > 0));
+        } else if (FlightZones.isController(tile)) {
+            int pylons = FlightZones.pylons(tile);
+            boolean boosted = FlightZones.boostTicks(tile) > 0;
+            list.points.add(
+                new MachinePoint(
+                    FlightZones.KIND_SPIRE,
+                    dimension,
+                    tile.xCoord,
+                    tile.yCoord,
+                    tile.zCoord,
+                    pylons,
+                    boosted ? 1 : 0,
+                    FlightZones.spireRange(pylons, boosted),
+                    FlightZones.controllerActive(tile) && FlightZones.spirePowered(tile)
+                        && FlightZones.potentia(tile) > 0));
         }
     }
 

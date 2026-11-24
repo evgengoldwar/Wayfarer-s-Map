@@ -19,7 +19,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 
 /**
  * One look at the tile entities of the loaded chunks for all the coverage layers (AE2 access points, chargers, drone
- * centres, mob guards), spread over {@link #SWEEP_TICKS} ticks. Each layer used to look at every tile entity
+ * centres, mob guards, flight), spread over {@link #SWEEP_TICKS} ticks. Each layer used to look at every tile entity
  * itself,
  * all of them in the same tick once a second, each asking every GregTech block for its machine by reflection again:
  * on a base of thousands of machines the game hitched every second. Now a tick looks at its share of the chunks, and
@@ -76,6 +76,9 @@ public final class MachineScanner {
         }
         if (Mods.isGuardsAvailable()) {
             INSTANCE.layers.add(GuardsLayer.INSTANCE);
+        }
+        if (Mods.isFlightAvailable()) {
+            INSTANCE.layers.add(FlightLayer.INSTANCE);
         }
         if (!INSTANCE.layers.isEmpty()) {
             FMLCommonHandler.instance()
