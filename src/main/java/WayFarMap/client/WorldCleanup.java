@@ -5,6 +5,8 @@ import java.lang.ref.WeakReference;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.World;
 
+import WayFarMap.client.integration.Mods;
+import WayFarMap.client.integration.OpisLayer;
 import WayFarMap.client.integration.ProspectingLayer;
 import WayFarMap.client.map.ChunkLoadView;
 import WayFarMap.client.waypoint.ItemSprites;
@@ -46,11 +48,18 @@ public final class WorldCleanup {
                 // The server is left: what was found on it, and the waypoints file it has (written to otherwise
                 // by what still came in from it).
                 ProspectingLayer.reset();
+                if (Mods.isOpisAvailable()) {
+                    OpisLayer.reset();
+                }
                 ChunkLoadView.reset();
                 WaypointManager.INSTANCE.unload();
             }
         }
         last = new WeakReference<>(world);
         inWorld = world != null;
+        if (inWorld) {
+            // Asks the new server for the rights, so they are known by the time the map is opened.
+            Mods.isOpisAllowed();
+        }
     }
 }

@@ -28,6 +28,7 @@ import WayFarMap.client.integration.CoverageDrawer;
 import WayFarMap.client.integration.DronesLayer;
 import WayFarMap.client.integration.GuardsLayer;
 import WayFarMap.client.integration.Mods;
+import WayFarMap.client.integration.OpisLayer;
 import WayFarMap.client.integration.PowerfailLayer;
 import WayFarMap.client.integration.ProspectingLayer;
 import WayFarMap.client.integration.ThaumcraftNodes;
@@ -490,6 +491,22 @@ public class MinimapRenderer {
                     Mods.Addon.CLAIMS,
                     () -> ClaimsLayer
                         .draw(mc.theWorld.provider.dimensionId, px, pz, scale, 0, 0, inner, inner, null, 0));
+            }
+            boolean opisTimes = Config.opisTimes(true), opisLoaded = Config.opisLoaded(true);
+            if ((opisTimes || opisLoaded) && Mods.isOpisAllowed()) {
+                Mods.draw(
+                    Mods.Addon.OPIS,
+                    () -> OpisLayer.draw(
+                        mc.theWorld.provider.dimensionId,
+                        opisTimes,
+                        opisLoaded,
+                        px,
+                        pz,
+                        scale,
+                        0,
+                        0,
+                        inner,
+                        inner));
             }
             if (Mods.isVisualProspectingLoaded()) {
                 int dimensionId = mc.theWorld.provider.dimensionId;

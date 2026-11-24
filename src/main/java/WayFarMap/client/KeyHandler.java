@@ -18,6 +18,7 @@ import WayFarMap.client.gui.GuiWaypointList;
 import WayFarMap.client.gui.GuiWorldMap;
 import WayFarMap.client.integration.ClaimsLayer;
 import WayFarMap.client.integration.Mods;
+import WayFarMap.client.integration.OpisLayer;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
@@ -65,6 +66,8 @@ public class KeyHandler {
     public static final KeyBinding CHARGERS = unbound("chargers");
     public static final KeyBinding DRONES = unbound("drones");
     public static final KeyBinding GUARDS = unbound("guards");
+    public static final KeyBinding OPIS_TIMES = unbound("opis_times");
+    public static final KeyBinding OPIS_LOADED = unbound("opis_loaded");
     public static final KeyBinding CHUNK_GRID = unbound("chunk_grid");
     public static final KeyBinding HOSTILE_MOBS = unbound("hostile_mobs");
     public static final KeyBinding PASSIVE_MOBS = unbound("passive_mobs");
@@ -88,6 +91,8 @@ public class KeyHandler {
     public static final KeyBinding MINIMAP_CHARGERS = unbound("minimap_chargers", CATEGORY_MINIMAP);
     public static final KeyBinding MINIMAP_DRONES = unbound("minimap_drones", CATEGORY_MINIMAP);
     public static final KeyBinding MINIMAP_GUARDS = unbound("minimap_guards", CATEGORY_MINIMAP);
+    public static final KeyBinding MINIMAP_OPIS_TIMES = unbound("minimap_opis_times", CATEGORY_MINIMAP);
+    public static final KeyBinding MINIMAP_OPIS_LOADED = unbound("minimap_opis_loaded", CATEGORY_MINIMAP);
     public static final KeyBinding MINIMAP_CHUNK_GRID = unbound("minimap_chunk_grid", CATEGORY_MINIMAP);
     public static final KeyBinding MINIMAP_HOSTILE_MOBS = unbound("minimap_hostile_mobs", CATEGORY_MINIMAP);
     public static final KeyBinding MINIMAP_PASSIVE_MOBS = unbound("minimap_passive_mobs", CATEGORY_MINIMAP);
@@ -98,12 +103,12 @@ public class KeyHandler {
     public static final KeyBinding MINIMAP_LIGHT = unbound("minimap_light", CATEGORY_MINIMAP);
 
     private static final KeyBinding[] UNBOUND = { MODE_BLOCKS, MODE_PLANTLESS, MODE_TOPO, MODE_BIOMES, ORES, FLUIDS,
-        CLAIMS, POWERFAILS, NODES, WIRELESS, CHARGERS, DRONES, GUARDS, CHUNK_GRID, HOSTILE_MOBS, PASSIVE_MOBS,
-        AMBIENT_MOBS, FRIENDLY_MOBS, PETS, PLAYERS, LIGHT, MINIMAP_MODE_BLOCKS, MINIMAP_MODE_PLANTLESS,
-        MINIMAP_MODE_TOPO, MINIMAP_MODE_BIOMES, MINIMAP_ORES, MINIMAP_FLUIDS, MINIMAP_CLAIMS, MINIMAP_POWERFAILS,
-        MINIMAP_NODES, MINIMAP_WIRELESS, MINIMAP_CHARGERS, MINIMAP_DRONES, MINIMAP_GUARDS, MINIMAP_CHUNK_GRID,
-        MINIMAP_HOSTILE_MOBS, MINIMAP_PASSIVE_MOBS, MINIMAP_AMBIENT_MOBS, MINIMAP_FRIENDLY_MOBS, MINIMAP_PETS,
-        MINIMAP_PLAYERS, MINIMAP_LIGHT };
+        CLAIMS, POWERFAILS, NODES, WIRELESS, CHARGERS, DRONES, GUARDS, OPIS_TIMES, OPIS_LOADED, CHUNK_GRID,
+        HOSTILE_MOBS, PASSIVE_MOBS, AMBIENT_MOBS, FRIENDLY_MOBS, PETS, PLAYERS, LIGHT, MINIMAP_MODE_BLOCKS,
+        MINIMAP_MODE_PLANTLESS, MINIMAP_MODE_TOPO, MINIMAP_MODE_BIOMES, MINIMAP_ORES, MINIMAP_FLUIDS, MINIMAP_CLAIMS,
+        MINIMAP_POWERFAILS, MINIMAP_NODES, MINIMAP_WIRELESS, MINIMAP_CHARGERS, MINIMAP_DRONES, MINIMAP_GUARDS,
+        MINIMAP_OPIS_TIMES, MINIMAP_OPIS_LOADED, MINIMAP_CHUNK_GRID, MINIMAP_HOSTILE_MOBS, MINIMAP_PASSIVE_MOBS,
+        MINIMAP_AMBIENT_MOBS, MINIMAP_FRIENDLY_MOBS, MINIMAP_PETS, MINIMAP_PLAYERS, MINIMAP_LIGHT };
 
     private static final String[] CAVE_MODE_KEYS = { "auto", "off", "on" };
     private static final String[] LIGHT_MODE_KEYS = { "auto", "day", "night" };
@@ -249,6 +254,16 @@ public class KeyHandler {
             Config.toggleGuards();
             tell(mc, GUARDS, Config.showGuards);
         }
+        if (OPIS_TIMES.isPressed() && opisAllowed(mc, OPIS_TIMES)) {
+            Config.toggleOpisTimes();
+            OpisLayer.onShow();
+            tell(mc, OPIS_TIMES, Config.showOpisTimes);
+        }
+        if (OPIS_LOADED.isPressed() && opisAllowed(mc, OPIS_LOADED)) {
+            Config.toggleOpisLoaded();
+            OpisLayer.onShow();
+            tell(mc, OPIS_LOADED, Config.showOpisLoaded);
+        }
         if (CHUNK_GRID.isPressed()) {
             Config.toggleChunkGrid();
             tell(mc, CHUNK_GRID, Config.chunkGrid);
@@ -362,6 +377,24 @@ public class KeyHandler {
         if (MINIMAP_GUARDS.isPressed() && installed(mc, MINIMAP_GUARDS, Mods.isGuardsAvailable())) {
             minimapToggle(mc, MINIMAP_GUARDS, layers, () -> Config.minimapGuards, on -> Config.minimapGuards = on);
         }
+        if (MINIMAP_OPIS_TIMES.isPressed() && opisAllowed(mc, MINIMAP_OPIS_TIMES)) {
+            OpisLayer.onShow();
+            minimapToggle(
+                mc,
+                MINIMAP_OPIS_TIMES,
+                layers,
+                () -> Config.minimapOpisTimes,
+                on -> Config.minimapOpisTimes = on);
+        }
+        if (MINIMAP_OPIS_LOADED.isPressed() && opisAllowed(mc, MINIMAP_OPIS_LOADED)) {
+            OpisLayer.onShow();
+            minimapToggle(
+                mc,
+                MINIMAP_OPIS_LOADED,
+                layers,
+                () -> Config.minimapOpisLoaded,
+                on -> Config.minimapOpisLoaded = on);
+        }
         if (MINIMAP_CHUNK_GRID.isPressed()) {
             minimapToggle(
                 mc,
@@ -444,6 +477,17 @@ public class KeyHandler {
             say(mc, Lang.format(key.getKeyDescription()) + ": " + Lang.format("key.wayfarmap.not_installed"));
         }
         return available;
+    }
+
+    private static boolean opisAllowed(Minecraft mc, KeyBinding key) {
+        if (!installed(mc, key, Mods.isOpisAvailable())) {
+            return false;
+        }
+        if (!Mods.isOpisAllowed()) {
+            say(mc, Mods.isOpisAvailable() ? OpisLayer.refusal() : Lang.format("key.wayfarmap.not_installed"));
+            return false;
+        }
+        return true;
     }
 
     /** The key's name, and on or off (nothing for a mode that is only set). */

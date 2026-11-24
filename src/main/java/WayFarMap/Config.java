@@ -111,7 +111,7 @@ public class Config {
     public static int minimapView = MINIMAP_VIEW_FLAT, minimapLightMode = LIGHT_AUTO;
     public static boolean minimapOreVeins = true, minimapUndergroundFluids, minimapClaims, minimapPowerfails = true,
         minimapThaumcraftNodes = true, minimapWireless = true, minimapChargers = true, minimapDrones = true,
-        minimapGuards = true;
+        minimapGuards = true, minimapOpisTimes, minimapOpisLoaded;
     public static boolean minimapChunkGrid;
     public static boolean minimapPlayers = true, minimapHostileMobs = true, minimapPassiveMobs = true,
         minimapAmbientMobs = true, minimapOtherEntities = true, minimapPets = true;
@@ -242,6 +242,10 @@ public class Config {
     public static boolean showDrones = true, dronesFullRange = true;
     /** Monster Repellators and Magnum Torches (only used when either is installed), and their full range ring. */
     public static boolean showGuards = true, guardsFullRange = true;
+    /** Opis' chunk update times and loaded chunks (only used when Opis is installed). */
+    public static boolean showOpisTimes = false, showOpisLoaded = false;
+    /** How often the server is asked for them while shown, in seconds. */
+    public static int opisRefresh = 10;
     /** Share the explored map with the ServerUtilities team (where the server has the mod). */
     public static boolean shareMapWithTeam = true;
     public static boolean useTextureColors = true;
@@ -550,6 +554,20 @@ public class Config {
             true,
             () -> minimapGuards,
             v -> minimapGuards = v);
+        bool(
+            c,
+            "layerOpisTimes",
+            "Opis chunk update times on the minimap.",
+            false,
+            () -> minimapOpisTimes,
+            v -> minimapOpisTimes = v);
+        bool(
+            c,
+            "layerOpisLoaded",
+            "Opis loaded chunks on the minimap.",
+            false,
+            () -> minimapOpisLoaded,
+            v -> minimapOpisLoaded = v);
         tab(null);
         group("ownGrid");
         parent("enabled");
@@ -1129,6 +1147,34 @@ public class Config {
             () -> guardsFullRange,
             v -> guardsFullRange = v);
         parent(null);
+        group("opis");
+        bool(
+            c,
+            "opisTimes",
+            "Show the slowest chunks of the last Opis run on the maps (if installed; the server answers only players "
+                + "with Opis rights).",
+            false,
+            () -> showOpisTimes,
+            v -> showOpisTimes = v);
+        bool(
+            c,
+            "opisLoaded",
+            "Show the chunks the server has loaded, as Opis knows them, on the maps (if installed; the server answers "
+                + "only players with Opis rights).",
+            false,
+            () -> showOpisLoaded,
+            v -> showOpisLoaded = v);
+        integer(
+            c,
+            "opisRefresh",
+            "How often the server is asked for Opis' chunks while they are shown, in seconds. Each time it goes "
+                + "through everything it has loaded or timed, so less often is easier on the server.",
+            10,
+            2,
+            300,
+            1,
+            () -> opisRefresh,
+            v -> opisRefresh = v);
         tab(TAB_MAP_2D);
         group("data");
         parent(null);
@@ -1647,7 +1693,9 @@ public class Config {
             "wireless",
             "chargers",
             "drones",
-            "guards");
+            "guards",
+            "opisTimes",
+            "opisLoaded");
         hideFromSettings(
             CATEGORY_ENTITIES,
             "showOtherPlayers",
@@ -1758,6 +1806,16 @@ public class Config {
 
     public static void toggleGuards() {
         showGuards = !showGuards;
+        save();
+    }
+
+    public static void toggleOpisTimes() {
+        showOpisTimes = !showOpisTimes;
+        save();
+    }
+
+    public static void toggleOpisLoaded() {
+        showOpisLoaded = !showOpisLoaded;
         save();
     }
 
@@ -1921,6 +1979,14 @@ public class Config {
         return minimap && minimapOwnLayers ? minimapGuards : showGuards;
     }
 
+    public static boolean opisTimes(boolean minimap) {
+        return minimap && minimapOwnLayers ? minimapOpisTimes : showOpisTimes;
+    }
+
+    public static boolean opisLoaded(boolean minimap) {
+        return minimap && minimapOwnLayers ? minimapOpisLoaded : showOpisLoaded;
+    }
+
     public static boolean chargers(boolean minimap) {
         return minimap && minimapOwnLayers ? minimapChargers : showChargers;
     }
@@ -1976,6 +2042,8 @@ public class Config {
             minimapChargers = showChargers;
             minimapDrones = showDrones;
             minimapGuards = showGuards;
+            minimapOpisTimes = showOpisTimes;
+            minimapOpisLoaded = showOpisLoaded;
             minimapOwnLayers = true;
         }
     }

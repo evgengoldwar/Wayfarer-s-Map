@@ -23,6 +23,7 @@ All keys of the mod are set in Minecraft's §bOptions → Controls§r (category 
 - §e{key:light}§r — lighting (auto / day / night), §e{key:chunk_grid}§r — chunk grid
 - §e{key:ores}§r — ore veins, §e{key:fluids}§r — underground fluids, §e{key:claims}§r — claims
 - §e{key:powerfails}§r — power failures, §e{key:nodes}§r — Thaumcraft nodes, §e{key:wireless}§r — AE2 wireless coverage, §e{key:chargers}§r — wireless chargers, §e{key:drones}§r — drone centres
+- §e{key:opis_times}§r — Opis chunk update times, §e{key:opis_loaded}§r — Opis loaded chunks
 - §e{key:hostile_mobs}§r — hostile mobs, §e{key:passive_mobs}§r — neutral mobs, §e{key:friendly_mobs}§r — friendly mobs
 - §e{key:pets}§r — pets, §e{key:players}§r — players
 
@@ -39,7 +40,7 @@ The top of the map has §ficons§r; hover one to see its name.
 - §bBar chart§r (§fStats§r) — disk space of the maps of §fall worlds§r, and for §fthis world§r (all dimensions or one, picked from a drop-down list): the 2D and 3D map, waypoints, GregTech ore veins, underground fluids and Thaumcraft nodes (with those mods); sizes are counted again each time it opens
 - §bBin§r — clean up: empty the logs folder, delete the 2D or 3D map of all dimensions of this world, or the 2D, 3D or whole map of one dimension (each button asks again). Waypoints are kept
 - §bCamera§r — a picture of the whole map (2D or 3D, as shown). Saved to §fscreenshots/wayfarmap§r, it opens in a browser and zooms down to single blocks. Pick the size: 3D from 2 to 64 px per block (and day or night), 2D from 1 to 16. §foverview.png§r is the whole map as one picture at the chosen full detail
-- §bLayers§r — the §bMod layers§r menu: checkboxes for ores, fluids, claims, power failures, Thaumcraft nodes, AE2 wireless coverage, wireless chargers and drone centres (only for installed mods); it stays open to switch several
+- §bLayers§r — the §bMod layers§r menu: checkboxes for ores, fluids, claims, power failures, Thaumcraft nodes, AE2 wireless coverage, wireless chargers, drone centres and Opis chunks (only for installed mods); it stays open to switch several
 
 §fRight:§r
 - §bCrosshair§r — follow the player: on, the map always opens at you; off, where you closed it
@@ -212,6 +213,15 @@ Turned on with the §bMob protection§r checkbox in the §bMod layers§r menu: a
 - Only the blocks you have seen are shown
 - Hover a circle — it is outlined in a lighter shade of its color, with whose it is by the cursor; hover the icon in the middle — coordinates, range, the range at your height and the state
 - The thin ring can be turned off: settings → §bMod layers§r → §bMob protection§r → §bFull range ring§r
+
+# {icon:opis} Laggy and loaded chunks (Opis)
+Needs §fOpis§r 1.4.12 or newer here and on the server, and Opis rights there (operators and its privileged list; cheats in single player): without them the buttons aren't shown. Turn on the checkboxes in the §bMod layers§r menu.
+
+- §bChunk update times§r: the 100 slowest chunks of the dimension in the last Opis run, from §9blue§r (fast) to §cred§r (the slowest). Start a run in the §f/opis§r window; it takes about 12 seconds
+- §bLoaded chunks§r: what the server has loaded: §agreen§r by players, §9blue§r by chunk loaders
+- Hover a chunk — its time per tick, tile entities and entities; right click — teleport to it through Opis, also into another dimension
+- The bottom right says what is shown
+- How often the server is asked: settings → §bMod layers§r → §bOpis§r → §bRefresh§r
 
 # {icon:claims} Claims (ServerUtilities)
 Needs §fServerUtilities§r and §fNavigator§r on the server. Turn on the §bClaims§r checkbox in the §bMod layers§r menu.
