@@ -22,7 +22,6 @@ import java.util.concurrent.Executors;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.EmptyChunk;
@@ -35,8 +34,8 @@ import WayFarMap.WayFarMap;
 import WayFarMap.client.Lang;
 import WayFarMap.client.gui.ui.Icons;
 import WayFarMap.client.map.MapManager;
-import WayFarMap.share.Chargers;
 import WayFarMap.share.DroneCentres;
+import WayFarMap.share.GtMeta;
 import WayFarMap.share.MachinePoint;
 import WayFarMap.share.ShareNetwork;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -53,14 +52,13 @@ import cpw.mods.fml.common.gameevent.TickEvent;
  * A server with this mod is asked about the centres seen ({@code share.MachineServer}) and tells the level and the
  * state of those in its loaded chunks; its word stands over the client's own look for a few seconds.
  */
-public final class DronesLayer {
+public final class DronesLayer implements MachineScanner.Layer {
 
     public static final DronesLayer INSTANCE = new DronesLayer();
 
     private static final int ACTIVE_COLOR = 0x1DE9B6;
     private static final int INACTIVE_COLOR = 0xFF3030;
     private static final int UNKNOWN_COLOR = 0xB0BEC5;
-    private static final int SCAN_TICKS = 20;
     private static final long SAVE_DELAY_MS = 5000;
     /** How long the server's word about a centre stands over what the client sees. */
     private static final long SERVER_FRESH_MS = 5000;
@@ -100,7 +98,6 @@ public final class DronesLayer {
     private File worldDirectory;
     private boolean inWorld, dirty;
     private long dirtySince;
-    private int tick;
 
     /** From the network thread. */
     public void receive(ShareNetwork.MachineList message) {
@@ -139,11 +136,6 @@ public final class DronesLayer {
             while ((message = inbox.poll()) != null) {
                 apply(message);
             }
-            if (++tick >= SCAN_TICKS) {
-                tick = 0;
-                scan(mc, mc.theWorld.provider.dimensionId);
-                ask(mc);
-            }
         } catch (Throwable t) {
             Mods.fail(Mods.Addon.DRONES, t);
         }
@@ -152,63 +144,69 @@ public final class DronesLayer {
         }
     }
 
-    /** Adds the centres in loaded chunks and drops those whose loaded chunk no longer has them. */
-    private void scan(Minecraft mc, int dimension) {
-        World world = mc.theWorld;
-        int radius = Math.min(32, Math.max(12, mc.gameSettings.renderDistanceChunks) + 2);
-        int chunkX = MathHelper.floor_double(mc.thePlayer.posX) >> 4;
-        int chunkZ = MathHelper.floor_double(mc.thePlayer.posZ) >> 4;
-        boolean known = DroneCentres.clientKnowsLevel();
-        Set<Long> present = new HashSet<>();
-        for (int cx = chunkX - radius; cx <= chunkX + radius; cx++) {
-            for (int cz = chunkZ - radius; cz <= chunkZ + radius; cz++) {
-                Chunk chunk = world.getChunkFromChunkCoords(cx, cz);
-                if (chunk instanceof EmptyChunk || !chunk.isChunkLoaded) {
-                    continue;
-                }
-                for (Object o : chunk.chunkTileEntityMap.values()) {
-                    TileEntity tile = (TileEntity) o;
-                    Object centre = tile.isInvalid() ? null : DroneCentres.centre(tile);
-                    if (centre == null) {
-                        continue;
-                    }
-                    present.add(pack(tile.xCoord, tile.yCoord, tile.zCoord));
-                    Seen point = seenAt(dimension, tile.xCoord, tile.yCoord, tile.zCoord);
-                    if (System.currentTimeMillis() - point.serverAt < SERVER_FRESH_MS) {
-                        continue;
-                    }
-                    int level = known ? DroneCentres.level(centre) : 0;
-                    int range = known ? DroneCentres.range(centre) : 0;
-                    boolean active = DroneCentres.isActive(tile);
-                    if (point.level != level || point.range != range
-                        || point.known != known
-                        || point.active != active) {
-                        point.level = level;
-                        point.range = range;
-                        point.known = known;
-                        point.active = active;
-                        markDirty();
-                    }
-                }
-            }
-        }
-        Map<Long, Seen> points = seen.get(dimension);
-        if (points == null) {
+    // ---------------------------------------------------------------- MachineScanner
+
+    private final Set<Long> present = new HashSet<>();
+
+    @Override
+    public Mods.Addon addon() {
+        return Mods.Addon.DRONES;
+    }
+
+    @Override
+    public boolean scans() {
+        return inWorld && Mods.isDronesAvailable();
+    }
+
+    @Override
+    public void sweepStart() {
+        present.clear();
+    }
+
+    @Override
+    public void see(int dimension, TileEntity tile, Object gtMachine) {
+        Object centre = DroneCentres.centreOf(gtMachine);
+        if (centre == null) {
             return;
         }
-        for (Iterator<Map.Entry<Long, Seen>> it = points.entrySet()
-            .iterator(); it.hasNext();) {
-            Map.Entry<Long, Seen> entry = it.next();
-            Seen point = entry.getValue();
-            if (present.contains(entry.getKey()) || !isLoaded(world, point.x, point.z)) {
-                continue;
-            }
-            TileEntity tile = world.getTileEntity(point.x, point.y, point.z);
-            if (DroneCentres.centre(tile) == null && !Chargers.isGtMachinePending(tile)) {
-                it.remove();
-                markDirty();
+        present.add(pack(tile.xCoord, tile.yCoord, tile.zCoord));
+        Seen point = seenAt(dimension, tile.xCoord, tile.yCoord, tile.zCoord);
+        if (System.currentTimeMillis() - point.serverAt < SERVER_FRESH_MS) {
+            return;
+        }
+        boolean known = DroneCentres.clientKnowsLevel();
+        int level = known ? DroneCentres.level(centre) : 0;
+        int range = known ? DroneCentres.range(centre) : 0;
+        boolean active = DroneCentres.isActive(tile);
+        if (point.level != level || point.range != range || point.known != known || point.active != active) {
+            point.level = level;
+            point.range = range;
+            point.known = known;
+            point.active = active;
+            markDirty();
+        }
+    }
+
+    /** Drops the centres whose loaded chunk no longer has them, and asks the server about those seen. */
+    @Override
+    public void sweepEnd(World world, int dimension) {
+        Map<Long, Seen> points = seen.get(dimension);
+        if (points != null) {
+            for (Iterator<Map.Entry<Long, Seen>> it = points.entrySet()
+                .iterator(); it.hasNext();) {
+                Map.Entry<Long, Seen> entry = it.next();
+                Seen point = entry.getValue();
+                if (present.contains(entry.getKey()) || !isLoaded(world, point.x, point.z)) {
+                    continue;
+                }
+                TileEntity tile = world.getTileEntity(point.x, point.y, point.z);
+                if (DroneCentres.centre(tile) == null && !GtMeta.isPending(tile)) {
+                    it.remove();
+                    markDirty();
+                }
             }
         }
+        ask(Minecraft.getMinecraft());
     }
 
     private static boolean isLoaded(World world, int x, int z) {

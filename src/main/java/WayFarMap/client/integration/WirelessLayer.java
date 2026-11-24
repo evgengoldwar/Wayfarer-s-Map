@@ -21,7 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.MathHelper;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.EmptyChunk;
@@ -52,14 +52,13 @@ import cpw.mods.fml.common.gameevent.TickEvent;
  * learned when the player opens the access point's screen; until then the circle is the range without boosters,
  * grayed. Those are kept in {@code ae2_wireless.json} of the world's map folder.
  */
-public final class WirelessLayer {
+public final class WirelessLayer implements MachineScanner.Layer {
 
     public static final WirelessLayer INSTANCE = new WirelessLayer();
 
     private static final int ACTIVE_COLOR = 0x4FC3F7;
     private static final int INACTIVE_COLOR = 0xFF3030;
     private static final int UNKNOWN_COLOR = 0xB0BEC5;
-    private static final int SCAN_TICKS = 20;
     private static final long SAVE_DELAY_MS = 5000;
     private static final String FILE_NAME = "ae2_wireless.json";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting()
@@ -96,7 +95,6 @@ public final class WirelessLayer {
     private File worldDirectory;
     private boolean inWorld, dirty;
     private long dirtySince;
-    private int tick;
 
     /** From the network thread. */
     public void receive(ShareNetwork.Wireless message) {
@@ -136,12 +134,7 @@ public final class WirelessLayer {
             infinite = message.infinite;
         }
         try {
-            int dimension = mc.theWorld.provider.dimensionId;
-            learnOpenRange(dimension, Ae2WirelessClient.openAccessPoint(mc.thePlayer));
-            if (++tick >= SCAN_TICKS) {
-                tick = 0;
-                scan(mc, dimension);
-            }
+            learnOpenRange(mc.theWorld.provider.dimensionId, Ae2WirelessClient.openAccessPoint(mc.thePlayer));
         } catch (Throwable t) {
             Mods.fail(Mods.Addon.AE2_WIRELESS, t);
         }
@@ -163,39 +156,56 @@ public final class WirelessLayer {
         }
     }
 
-    /** Adds the access points in loaded chunks and drops those whose loaded chunk no longer has them. */
-    private void scan(Minecraft mc, int dimension) {
-        World world = mc.theWorld;
-        // The chunks the server sends reach past the client's own render distance.
-        int radius = Math.min(32, Math.max(12, mc.gameSettings.renderDistanceChunks) + 2);
-        Set<Long> present = new HashSet<>();
-        for (int[] found : Ae2WirelessClient.loadedAccessPoints(
-            world,
-            MathHelper.floor_double(mc.thePlayer.posX) >> 4,
-            MathHelper.floor_double(mc.thePlayer.posZ) >> 4,
-            radius)) {
-            Seen point = seenAt(dimension, found[0], found[1], found[2], true);
-            present.add(pack(found[0], found[1], found[2]));
-            boolean active = found[3] != 0;
-            if (point.active != active) {
-                point.active = active;
-                markDirty();
-            }
-        }
-        Map<Long, Seen> points = seen.get(dimension);
-        if (points == null) {
+    // ---------------------------------------------------------------- MachineScanner
+
+    private final Set<Long> present = new HashSet<>();
+
+    @Override
+    public Mods.Addon addon() {
+        return Mods.Addon.AE2_WIRELESS;
+    }
+
+    @Override
+    public boolean scans() {
+        return inWorld && Mods.isAe2Loaded();
+    }
+
+    @Override
+    public void sweepStart() {
+        present.clear();
+    }
+
+    @Override
+    public void see(int dimension, TileEntity tile, Object gtMachine) {
+        int[] found = Ae2WirelessClient.accessPoint(tile);
+        if (found == null) {
             return;
         }
-        for (Iterator<Map.Entry<Long, Seen>> it = points.entrySet()
-            .iterator(); it.hasNext();) {
-            Map.Entry<Long, Seen> entry = it.next();
-            Seen point = entry.getValue();
-            if (present.contains(entry.getKey()) || !isLoaded(world, point.x, point.z)) {
-                continue;
-            }
-            if (!Ae2WirelessClient.isAccessPoint(world, point.x, point.y, point.z)) {
-                it.remove();
-                markDirty();
+        Seen point = seenAt(dimension, found[0], found[1], found[2], true);
+        present.add(pack(found[0], found[1], found[2]));
+        boolean active = found[3] != 0;
+        if (point.active != active) {
+            point.active = active;
+            markDirty();
+        }
+    }
+
+    /** Drops the access points whose loaded chunk no longer has them. */
+    @Override
+    public void sweepEnd(World world, int dimension) {
+        Map<Long, Seen> points = seen.get(dimension);
+        if (points != null) {
+            for (Iterator<Map.Entry<Long, Seen>> it = points.entrySet()
+                .iterator(); it.hasNext();) {
+                Map.Entry<Long, Seen> entry = it.next();
+                Seen point = entry.getValue();
+                if (present.contains(entry.getKey()) || !isLoaded(world, point.x, point.z)) {
+                    continue;
+                }
+                if (!Ae2WirelessClient.isAccessPoint(world, point.x, point.y, point.z)) {
+                    it.remove();
+                    markDirty();
+                }
             }
         }
     }

@@ -16,6 +16,11 @@
   A line right under a point carries it on. Comments like this one are left out.
 -->
 
+# 0.0.26
+
+## Coverage zones
+- [fix] No more hitch every second on big bases: the coverage layers look for their machines all at once, a little each tick
+
 # 0.0.21
 
 ## Coverage zones

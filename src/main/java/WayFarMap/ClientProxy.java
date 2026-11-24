@@ -20,6 +20,7 @@ import WayFarMap.client.integration.ChargersLayer;
 import WayFarMap.client.integration.ClaimsLayer;
 import WayFarMap.client.integration.DronesLayer;
 import WayFarMap.client.integration.GuardsLayer;
+import WayFarMap.client.integration.MachineScanner;
 import WayFarMap.client.integration.Mods;
 import WayFarMap.client.integration.WirelessLayer;
 import WayFarMap.client.map.ChunkLoadClient;
@@ -89,6 +90,7 @@ public class ClientProxy extends CommonProxy {
                 .bus()
                 .register(GuardsLayer.INSTANCE);
         }
+        MachineScanner.register();
 
         FMLCommonHandler.instance()
             .bus()
