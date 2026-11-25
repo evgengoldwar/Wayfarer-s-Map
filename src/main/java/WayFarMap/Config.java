@@ -70,8 +70,16 @@ public class Config {
      */
     public static final int MAP_LAYOUT_MODERN = 0, MAP_LAYOUT_CLASSIC = 1;
     public static int mapButtonLayout = MAP_LAYOUT_CLASSIC;
-    /** The look of the mod's screens: one of the themes of {@code Theme} (0 = graphite, the default). */
+    /**
+     * The look of the mod's screens: one of the themes of {@code Theme} (0 = graphite, the default), built in or
+     * added by a resource pack or the {@code wayfarmap/CustomThemes} folder.
+     */
     public static int uiTheme = 0;
+    /**
+     * The chosen theme's name ({@link #uiTheme} is its place in the list, which changes as themes are added):
+     * "graphite", "nether", or a theme's folder name in {@code CustomThemes}. Empty in a settings file from before.
+     */
+    public static String uiThemeName = "";
 
     public static final int LIGHT_AUTO = 0, LIGHT_DAY = 1, LIGHT_NIGHT = 2;
     public static final int CAVES_AUTO = 0, CAVES_OFF = 1, CAVES_ON = 2;
@@ -621,11 +629,22 @@ public class Config {
             c,
             "theme",
             "Look of the mod's screens: 0 = graphite, 1 = forest, 2 = nether, 3 = ocean, 4 = end, 5 = desert, "
-                + "6 = snow (light), 7 = vanilla (like Minecraft's own).",
+                + "6 = snow (light), 7 = vanilla (like Minecraft's own); higher numbers are the themes added by "
+                + "resource packs and the wayfarmap/CustomThemes folder. The theme is kept by its name (themeName).",
             0,
             new String[] { "graphite", "forest", "nether", "ocean", "end", "desert", "snow", "vanilla" },
             () -> uiTheme,
             v -> uiTheme = v);
+        add(
+            new StringOption(
+                c,
+                "themeName",
+                "Name of the chosen theme: a built-in one (graphite, forest, nether, ocean, end, desert, snow, "
+                    + "vanilla) or the folder of a theme in .minecraft/wayfarmap/CustomThemes.",
+                "",
+                () -> uiThemeName,
+                v -> uiThemeName = v));
+        OPTIONS.get(OPTIONS.size() - 1).inSettings = false;
         group("general");
         parent(null);
         choice(
@@ -2160,7 +2179,9 @@ public class Config {
 
     public static class IntOption extends Option {
 
-        public final int defaultValue, min, max, step;
+        public final int defaultValue, min, step;
+        /** The highest value; the theme list's grows with the themes added. */
+        public int max;
         private final IntSupplier getter;
         private final IntConsumer setter;
 
@@ -2209,7 +2230,7 @@ public class Config {
     public static class ChoiceOption extends IntOption {
 
         /** Suffixes of the value translation keys: {@code langKey() + "." + values[i]}. */
-        public final String[] values;
+        public String[] values;
 
         ChoiceOption(String category, String key, String comment, int defaultValue, String[] values, IntSupplier getter,
             IntConsumer setter) {
@@ -2325,6 +2346,45 @@ public class Config {
         }
     }
 
+    /** A line of text; not on the settings screen. */
+    public static class StringOption extends Option {
+
+        public final String defaultValue;
+        private final Supplier<String> getter;
+        private final Consumer<String> setter;
+
+        StringOption(String category, String key, String comment, String defaultValue, Supplier<String> getter,
+            Consumer<String> setter) {
+            super(category, key, comment);
+            this.defaultValue = defaultValue;
+            this.getter = getter;
+            this.setter = setter;
+        }
+
+        @Override
+        void load(Configuration configuration) {
+            setter.accept(
+                configuration.getString(key, category, defaultValue, comment)
+                    .trim());
+        }
+
+        @Override
+        void save(Configuration configuration) {
+            configuration.get(category, key, defaultValue, comment)
+                .set(getter.get());
+        }
+
+        @Override
+        public void reset() {
+            setter.accept(defaultValue);
+        }
+
+        @Override
+        public boolean isDefault() {
+            return defaultValue.equals(getter.get());
+        }
+    }
+
     /**
      * Where the minimap is on screen ({@link #minimapX}, {@link #minimapY}), saved as {@code <key>X} and
      * {@code <key>Y}; the settings screen opens a screen to drag it around.
@@ -2375,6 +2435,22 @@ public class Config {
     /** Whether it is the choice of the mod's language, drawn with the languages' flags. */
     public static boolean isLanguage(Option option) {
         return option instanceof ChoiceOption && CATEGORY_MAP.equals(option.category) && "language".equals(option.key);
+    }
+
+    /** Whether the option is the theme of the mod's screens, whose values are the themes found. */
+    public static boolean isTheme(Option option) {
+        return option instanceof ChoiceOption && CATEGORY_MAP.equals(option.category) && "theme".equals(option.key);
+    }
+
+    /** The themes that can be chosen, by name: the built-in ones, then those added. Client. */
+    public static void setThemeChoices(String[] ids) {
+        for (Option option : OPTIONS) {
+            if (isTheme(option)) {
+                ChoiceOption choice = (ChoiceOption) option;
+                choice.values = ids;
+                choice.max = ids.length - 1;
+            }
+        }
     }
 
     /** Tab the options declared next are shown on; null for their category's own. */

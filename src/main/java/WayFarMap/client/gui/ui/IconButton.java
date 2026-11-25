@@ -21,6 +21,11 @@ public class IconButton extends FlatButton {
     }
 
     @Override
+    protected String skinPart() {
+        return "icon_button";
+    }
+
+    @Override
     public void drawButton(Minecraft mc, int mouseX, int mouseY) {
         if (!visible) {
             return;

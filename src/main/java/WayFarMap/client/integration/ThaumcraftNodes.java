@@ -199,8 +199,7 @@ public final class ThaumcraftNodes {
         double top = centerZ - height / 2.0 / scale;
         // Keep JourneyMap's 44-pixel marker readable even when zoomed out, at any UI scale. When zoomed in,
         // it can still grow to cover the node's block (up to 64 GUI pixels).
-        double size = minimap ? 9
-            : Math.max(ICON_SIZE / (double) ScaledScreen.currentFactor(), Math.min(64, scale));
+        double size = minimap ? 9 : Math.max(ICON_SIZE / (double) ScaledScreen.currentFactor(), Math.min(64, scale));
         double half = size / 2;
         boolean searching = searchTokens.length > 0;
 

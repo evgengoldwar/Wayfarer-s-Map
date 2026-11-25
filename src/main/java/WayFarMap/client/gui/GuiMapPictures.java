@@ -1299,7 +1299,7 @@ public class GuiMapPictures extends ScaledScreen {
         boolean big = viewing >= 0 && viewing < pictures.size();
         updateButtons(big);
 
-        Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
+        Theme.dimScreen(0, 0, width, height);
         // A soft shadow around the window.
         Theme.fill(left - 2, top - 1, right + 2, bottom + 3, 0x30000000);
         Theme.fill(left - 1, top, right + 1, bottom + 2, 0x40000000);
@@ -2036,9 +2036,11 @@ public class GuiMapPictures extends ScaledScreen {
         int textWidth = fontRendererObj.getStringWidth(text);
         int x0 = (width - textWidth) / 2 - 10, y0 = bottomY - 16 + shift;
         int x1 = x0 + textWidth + 20;
-        Theme.fill(x0 + 2, y0 + 2, x1 + 2, bottomY + shift + 2, 0x60000000);
-        Theme.fill(x0, y0, x1, bottomY + shift, Theme.alpha(Theme.PANEL, 0xF0));
-        Theme.outline(x0, y0, x1, bottomY + shift, toastColor);
+        if (!Theme.sprite(x0, y0, x1, bottomY + shift, "toast")) {
+            Theme.fill(x0 + 2, y0 + 2, x1 + 2, bottomY + shift + 2, 0x60000000);
+            Theme.fill(x0, y0, x1, bottomY + shift, Theme.alpha(Theme.PANEL, 0xF0));
+            Theme.outline(x0, y0, x1, bottomY + shift, toastColor);
+        }
         Theme.fill(x0, y0, x0 + 3, bottomY + shift, toastColor);
         Theme.text(fontRendererObj, text, x0 + 10, y0 + 4, toastColor);
     }

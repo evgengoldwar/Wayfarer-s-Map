@@ -297,6 +297,15 @@ public final class Icons {
 
     /** Draws the icon with its top left corner at (x, y), one GUI pixel per '#', merging runs into rectangles. */
     public static void draw(String[] icon, int x, int y, int color) {
+        Skin.Sprite sprite = Skin.icon(icon);
+        if (sprite != null) {
+            // The theme's picture of the icon, in the icon's box (or its own size, centered on it).
+            int w = width(icon), h = icon.length;
+            int sw = sprite.drawWidth > 0 ? sprite.drawWidth : w, sh = sprite.drawHeight > 0 ? sprite.drawHeight : h;
+            double sx = x + (w - sw) / 2.0, sy = y + (h - sh) / 2.0;
+            Skin.draw(sprite, sx, sy, sx + sw, sy + sh, color, 1);
+            return;
+        }
         for (int row = 0; row < icon.length; row++) {
             String line = icon[row];
             int start = -1;

@@ -22,6 +22,7 @@ import WayFarMap.Perf;
 import WayFarMap.client.gui.GuiMinimapPosition;
 import WayFarMap.client.gui.GuiWorldMap;
 import WayFarMap.client.gui.ui.ScaledScreen;
+import WayFarMap.client.gui.ui.Skin;
 import WayFarMap.client.integration.ChargersLayer;
 import WayFarMap.client.integration.ClaimsLayer;
 import WayFarMap.client.integration.CoverageDrawer;
@@ -287,13 +288,20 @@ public class MinimapRenderer {
         float opacity = Config.minimapFrameOpacity / 100f;
         int frameColor = Math.round(255 * opacity) << 24 | Config.minimapFrameColor;
         int frameWidth = Config.minimapFrameWidth;
+        // The theme's picture of the frame, when it has one, instead of the line of the frame's color.
+        Skin.Sprite frameSprite = Config.minimapFrame ? Skin.get(round ? "minimap.frame.round" : "minimap.frame")
+            : null;
+        if (frameSprite != null) {
+            int reach = Math.max(frameWidth, frameSprite.drawWidth);
+            Skin.draw(frameSprite, x - reach, y - reach, x + size + reach, y + size + reach, -1, opacity);
+        }
         if (round) {
-            if (Config.minimapFrame) {
+            if (Config.minimapFrame && frameSprite == null) {
                 fillRing(centerX, centerY, half, half + frameWidth, frameColor);
             }
             fillCircle(centerX, centerY, half, 0xFF0C0E11);
         } else {
-            if (Config.minimapFrame) {
+            if (Config.minimapFrame && frameSprite == null) {
                 frameRect(
                     x - frameWidth,
                     y - frameWidth,

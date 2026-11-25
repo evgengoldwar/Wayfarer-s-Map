@@ -68,8 +68,10 @@ public final class WindowHeader {
      */
     public static void draw(FontRenderer font, int left, int top, int right, int textRight, String[] icon, String title,
         String subtitle, int subtitleColor, String pill) {
-        Theme.fill(left + 1, top + 1, right - 1, top + HEIGHT - 1, Theme.HEADER);
-        Theme.fill(left + 1, top + HEIGHT - 1, right - 1, top + HEIGHT, Theme.BORDER);
+        if (!Theme.sprite(left + 1, top + 1, right - 1, top + HEIGHT, "header")) {
+            Theme.fill(left + 1, top + 1, right - 1, top + HEIGHT - 1, Theme.HEADER);
+            Theme.fill(left + 1, top + HEIGHT - 1, right - 1, top + HEIGHT, Theme.BORDER);
+        }
         // The theme's strip along the bottom of the header (leaves, lava...).
         Theme.decor(left + 1, top + HEIGHT - 3, right - 1, 2);
 
@@ -81,15 +83,17 @@ public final class WindowHeader {
         if (pill != null) {
             int pillWidth = font.getStringWidth(pill) + 8;
             int pillLeft = textRight - 4 - pillWidth;
-            Theme.fill(pillLeft, top + 9, textRight - 4, top + 21, Theme.CONTROL);
-            Theme.outline(pillLeft, top + 9, textRight - 4, top + 21, Theme.BORDER);
+            if (!Theme.sprite(pillLeft, top + 9, textRight - 4, top + 21, "pill")) {
+                Theme.fill(pillLeft, top + 9, textRight - 4, top + 21, Theme.CONTROL);
+                Theme.outline(pillLeft, top + 9, textRight - 4, top + 21, Theme.BORDER);
+            }
             font.drawString(pill, pillLeft + 4, top + 11, Theme.TEXT_MUTED);
             textRight = pillLeft;
         }
         int room = Math.max(0, textRight - 6 - textLeft);
         String shownTitle = Theme.ellipsize(font, title, room);
         int titleY = subtitle == null ? top + 11 : top + 6;
-        if (Theme.LIGHT) {
+        if (!Theme.TITLE_SHADOW) {
             font.drawString(shownTitle, textLeft, titleY, Theme.TEXT);
         } else {
             font.drawStringWithShadow(shownTitle, textLeft, titleY, Theme.TEXT);
@@ -99,6 +103,8 @@ public final class WindowHeader {
         }
         // The line under the header: in the accent color under the title.
         int accentRight = Math.min(right - 1, textLeft + font.getStringWidth(shownTitle) + 4);
-        Theme.fill(left + 1, top + HEIGHT - 1, accentRight, top + HEIGHT, Theme.ACCENT);
+        if (!Theme.sprite(left + 1, top + HEIGHT - 1, accentRight, top + HEIGHT, "header.accent")) {
+            Theme.fill(left + 1, top + HEIGHT - 1, accentRight, top + HEIGHT, Theme.ACCENT);
+        }
     }
 }
