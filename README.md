@@ -23,7 +23,7 @@
 
 ---
 
-Wayfarer's Map draws everything you have **already seen**: a minimap in the corner of the screen, a fullscreen world map, an isometric **3D map like Dynmap**, waypoints, caves, biomes and topography — plus first-class layers for **GregTech ore veins, underground fluids, power failures, ServerUtilities claims, Thaumcraft nodes, AE2 wireless coverage, wireless chargers, drone centres and mob protection**.
+Wayfarer's Map draws everything you have **already seen**: a minimap in the corner of the screen, a fullscreen world map, an isometric **3D map like Dynmap**, waypoints, caves, biomes and topography — plus first-class layers for **GregTech ore veins, underground fluids, power failures, ServerUtilities claims, Thaumcraft nodes, AE2 wireless coverage, wireless chargers, drone centres, mob protection and Opis chunk lag**.
 
 It is **client-side**: the map is built from the chunks your client loads, so it works on any server. Install it on the server as well to unlock the shared **team map**, live teammate positions and `/wf chunkload`.
 
@@ -90,6 +90,7 @@ All integrations are **optional** — buttons appear only when the mod is instal
 | 🔋 **GregTech** and **[EnderIO](https://github.com/GTNewHorizons/EnderIO)** wireless chargers | **Charging range** of each wireless charger, at your height and at the full range. A GregTech charger's mode is known to the server only: without the mod there the range of every mode is shown until you right-click the charger. |
 | 🛸 **GregTech** Drone Centre | **Range** of each drone centre, where it reaches the drone downlink modules, by its drone's level. |
 | 🔦 **GregTech** Monster Repellator, **Extra Utilities** Magnum Torch and Chandelier | **Mob protection**: where monsters don't spawn around each. A repellator's power is known to the server only: without the mod there its range without power is shown. |
+| ⏱️ **[Opis](https://github.com/GTNewHorizons/Opis)** | **Laggy chunks** — the 100 slowest chunks of the last Opis run as a heatmap, with their time, tile entities and entities — and the **chunks the server has loaded**, those kept by chunk loaders in blue. Right-click teleports there through Opis. Needs Opis on the server and Opis rights there (operators; cheats in single player): without them its buttons aren't shown. |
 
 ## 👥 Team map
 
@@ -142,7 +143,7 @@ All keys can be rebound in **Options → Controls → Wayfarer's Map**.
 
 <br>
 
-Map view (2D, 2D without plants, topography, biomes) · ore veins · underground fluids · claims · power failures · Thaumcraft nodes · AE2 wireless coverage · wireless chargers · drone centres · mob protection · chunk grid · hostile / neutral / ambient / friendly mobs · pets · players · lighting (auto / day / night).
+Map view (2D, 2D without plants, topography, biomes) · ore veins · underground fluids · claims · power failures · Thaumcraft nodes · AE2 wireless coverage · wireless chargers · drone centres · mob protection · Opis chunk update times · Opis loaded chunks · chunk grid · hostile / neutral / ambient / friendly mobs · pets · players · lighting (auto / day / night).
 
 Each of them also has a **minimap-only** key, under *Wayfarer's Map: Minimap*: pressing one gives that part of the minimap its own setting, apart from the world map.
 

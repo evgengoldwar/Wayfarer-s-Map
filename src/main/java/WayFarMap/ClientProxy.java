@@ -21,6 +21,7 @@ import WayFarMap.client.integration.ClaimsLayer;
 import WayFarMap.client.integration.DronesLayer;
 import WayFarMap.client.integration.GuardsLayer;
 import WayFarMap.client.integration.Mods;
+import WayFarMap.client.integration.OpisLayer;
 import WayFarMap.client.integration.WirelessLayer;
 import WayFarMap.client.map.ChunkLoadClient;
 import WayFarMap.client.map.MapManager;
@@ -88,6 +89,9 @@ public class ClientProxy extends CommonProxy {
             FMLCommonHandler.instance()
                 .bus()
                 .register(GuardsLayer.INSTANCE);
+        }
+        if (Mods.isOpisAvailable()) {
+            OpisLayer.register();
         }
 
         FMLCommonHandler.instance()

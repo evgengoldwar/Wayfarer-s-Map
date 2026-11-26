@@ -55,6 +55,7 @@ import WayFarMap.client.integration.CoverageHover;
 import WayFarMap.client.integration.DronesLayer;
 import WayFarMap.client.integration.GuardsLayer;
 import WayFarMap.client.integration.Mods;
+import WayFarMap.client.integration.OpisLayer;
 import WayFarMap.client.integration.PowerfailLayer;
 import WayFarMap.client.integration.ProspectingLayer;
 import WayFarMap.client.integration.ThaumcraftNodes;
@@ -142,6 +143,8 @@ public class GuiWorldMap extends ScaledScreen {
     private IconButton exportButton;
     /** The button layout the header was built for ({@link Config#mapButtonLayout}). */
     private int builtLayout = -1;
+    /** The buttons were made with those of the Opis layers: only for players with rights to it. */
+    private boolean builtOpis;
     /** The mod layers menu's button (classic layout); null in the modern one or without those mods. */
     private IconButton addonsButton;
     /** Left edge of the buttons on the right of the header, and of those in its middle. */
@@ -309,10 +312,14 @@ public class GuiWorldMap extends ScaledScreen {
             if (Mods.isVisualProspectingLoaded()) {
                 ProspectingLayer.onOpenMap();
             }
+            if (Mods.isOpisAvailable()) {
+                OpisLayer.onShow();
+            }
         }
         lastFrameNanos = System.nanoTime();
         buttonList.clear();
         builtLayout = Config.mapButtonLayout;
+        builtOpis = Mods.isOpisAllowed();
         addonsButton = null;
         layerButtons.clear();
         if (classic()) {
@@ -411,7 +418,8 @@ public class GuiWorldMap extends ScaledScreen {
             || Mods.isAe2Loaded()
             || Mods.isChargersAvailable()
             || Mods.isDronesAvailable()
-            || Mods.isGuardsAvailable())) {
+            || Mods.isGuardsAvailable()
+            || builtOpis)) {
             addonsButton = new IconButton(ID_ADDONS, x, 4, Icons.ADDONS, Lang.format("wayfarmap.gui.addons"));
             addonsButton.iconColor = COLOR_ADDONS;
             addIconButton(addonsButton, x);
@@ -502,6 +510,18 @@ public class GuiWorldMap extends ScaledScreen {
                 addonToggle("wayfarmap.gui.guards", Config.showGuards, Config::toggleGuards).icon(Icons.REPELLATOR)
                     .iconColor(0xFF76FF03)
                     .key("guards"));
+        }
+        if (Mods.isOpisAllowed()) {
+            entries.add(
+                addonToggle("wayfarmap.gui.opis_times", Config.showOpisTimes, GuiWorldMap::toggleOpisTimes)
+                    .icon(Icons.CHUNK_TIME)
+                    .iconColor(0xFFFF7043)
+                    .key("opis_times"));
+            entries.add(
+                addonToggle("wayfarmap.gui.opis_loaded", Config.showOpisLoaded, GuiWorldMap::toggleOpisLoaded)
+                    .icon(Icons.CHUNK_LOADED)
+                    .iconColor(0xFF66BB6A)
+                    .key("opis_loaded"));
         }
         menu = entries;
         menuKind = MENU_ADDONS;
@@ -732,6 +752,22 @@ public class GuiWorldMap extends ScaledScreen {
                 () -> Config.showGuards,
                 Config::toggleGuards);
         }
+        if (builtOpis) {
+            addLayer(
+                Icons.CHUNK_TIME,
+                0xFFFF7043,
+                "wayfarmap.gui.opis_times",
+                "opis_times",
+                () -> Config.showOpisTimes,
+                GuiWorldMap::toggleOpisTimes);
+            addLayer(
+                Icons.CHUNK_LOADED,
+                0xFF66BB6A,
+                "wayfarmap.gui.opis_loaded",
+                "opis_loaded",
+                () -> Config.showOpisLoaded,
+                GuiWorldMap::toggleOpisLoaded);
+        }
         int step = 19;
         int y = (HEADER_HEIGHT + height - FOOTER_HEIGHT) / 2 - (layerButtons.size() * step - 3) / 2;
         for (LayerButton layer : layerButtons) {
@@ -887,6 +923,20 @@ public class GuiWorldMap extends ScaledScreen {
 
     private static boolean guardsShown() {
         return Config.showGuards && Mods.isGuardsAvailable();
+    }
+
+    private static boolean opisShown() {
+        return (Config.showOpisTimes || Config.showOpisLoaded) && Mods.isOpisAllowed();
+    }
+
+    private static void toggleOpisTimes() {
+        Config.toggleOpisTimes();
+        OpisLayer.onShow();
+    }
+
+    private static void toggleOpisLoaded() {
+        Config.toggleOpisLoaded();
+        OpisLayer.onShow();
     }
 
     private static boolean chargersShown() {
@@ -1093,7 +1143,8 @@ public class GuiWorldMap extends ScaledScreen {
                 || wirelessShown()
                 || chargersShown()
                 || dronesShown()
-                || guardsShown();
+                || guardsShown()
+                || opisShown();
         }
     }
 
@@ -1486,8 +1537,9 @@ public class GuiWorldMap extends ScaledScreen {
 
     @Override
     public void drawScaled(int mouseX, int mouseY, float partialTicks) {
-        if (builtLayout != Config.mapButtonLayout) {
-            // Picked in the welcome window over the map: its buttons move at once.
+        if (builtLayout != Config.mapButtonLayout || builtOpis != Mods.isOpisAllowed()) {
+            // Picked in the welcome window over the map, or the server told the rights to Opis: its buttons move at
+            // once.
             initGui();
         }
         long perf = Perf.start();
@@ -1674,6 +1726,21 @@ public class GuiWorldMap extends ScaledScreen {
                 () -> ClaimsLayer
                     .draw(dimensionId, centerX, centerZ, scale, 0, 0, width, height, claimSelection, claimAction));
         }
+        if (opisShown()) {
+            Mods.draw(
+                Mods.Addon.OPIS,
+                () -> OpisLayer.draw(
+                    dimensionId,
+                    Config.showOpisTimes,
+                    Config.showOpisLoaded,
+                    centerX,
+                    centerZ,
+                    scale,
+                    0,
+                    0,
+                    width,
+                    height));
+        }
         if (prospecting && Config.showUndergroundFluids) {
             Mods.draw(
                 Mods.Addon.VISUAL_PROSPECTING,
@@ -1834,6 +1901,12 @@ public class GuiWorldMap extends ScaledScreen {
             right = Lang.format("wayfarmap.claims.other_dimension");
             rightColor = Theme.DANGER;
         }
+        if (opisShown() && !iso && !chunkloadShown() && exportStatus == null && loadStatus == null) {
+            OpisLayer.Status opis = OpisLayer.status(dimensionId, Config.showOpisTimes, Config.showOpisLoaded);
+            boolean alone = right == null || right.isEmpty();
+            right = alone ? opis.text : right + "  ·  " + opis.text;
+            rightColor = alone ? opis.color : rightColor;
+        }
         int rightEdge = helpButton.visible ? helpButton.xPosition - 8
             : aboutButton.visible ? aboutButton.xPosition - 8 : width - 6;
         if (!classic()) {
@@ -1918,8 +1991,20 @@ public class GuiWorldMap extends ScaledScreen {
                 if (tooltip == null && prospecting && Config.showOreVeins) {
                     tooltip = ProspectingLayer.getHoveredTooltip();
                 }
-                if (tooltip == null && claimsShown()) {
-                    tooltip = ClaimsLayer.tooltip(hoverX >> 4, hoverZ >> 4, dimensionId);
+                List<String> opis = tooltip != null || !opisShown() ? null
+                    : OpisLayer
+                        .tooltip(dimensionId, hoverX >> 4, hoverZ >> 4, Config.showOpisTimes, Config.showOpisLoaded);
+                if (opis != null) {
+                    tooltip = opis;
+                }
+                if ((tooltip == null || opis != null) && claimsShown()) {
+                    List<String> claim = ClaimsLayer.tooltip(hoverX >> 4, hoverZ >> 4, dimensionId);
+                    if (opis != null && claim != null) {
+                        // Both are about the chunk.
+                        opis.addAll(claim);
+                    } else if (claim != null) {
+                        tooltip = claim;
+                    }
                 }
                 if (tooltip == null && biomeViewShown() && waypointAt(mouseX, mouseY) == null) {
                     // Biome view: the biome's name by the cursor, where the eye already is.
@@ -2465,6 +2550,14 @@ public class GuiWorldMap extends ScaledScreen {
                     // Unexplored or unknown height: ask which Y to go to.
                     mc.displayGuiScreen(new GuiTeleportY(this, bx, bz));
                 }
+            }).icon(Icons.SMALL_UP));
+        }
+        final int chunkX = bx >> 4, chunkZ = bz >> 4;
+        if (flat && opisShown()
+            && OpisLayer.has(dimension, chunkX, chunkZ, Config.showOpisTimes, Config.showOpisLoaded)) {
+            entries.add(new MenuEntry(Lang.format("wayfarmap.opis.teleport"), true, () -> {
+                mc.displayGuiScreen(null);
+                OpisLayer.teleport(dimension, chunkX, chunkZ);
             }).icon(Icons.SMALL_UP));
         }
         entries.add(

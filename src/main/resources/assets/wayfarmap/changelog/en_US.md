@@ -16,6 +16,15 @@
   A line right under a point carries it on. Comments like this one are left out.
 -->
 
+# 0.0.26
+
+## Opis
+- [new] Chunk update times (Opis): the 100 slowest chunks of the dimension in the last Opis run, from blue to red; hover a chunk for its time per tick, tile entities and entities
+- [new] Loaded chunks (Opis): the chunks the server has loaded, green, and those kept loaded by chunk loaders, blue
+  - Right click a chunk of either: teleport to it through Opis, also into another dimension
+  - Only for players with Opis rights on the server (operators and its privileged list; cheats in single player), the buttons aren't shown to others. Needs Opis 1.4.12
+  - How often the server is asked: settings → Mod layers → Opis → Refresh
+
 # 0.0.21
 
 ## Coverage zones

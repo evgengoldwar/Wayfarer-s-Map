@@ -28,6 +28,7 @@ public final class Mods {
     private static Boolean claims;
     private static Boolean thaumcraftNodes;
     private static Boolean ae2;
+    private static Boolean opis;
     private static boolean chargersBroken, dronesBroken, guardsBroken;
     /** Set when drawing GregTech power failures failed: the layer is off for the rest of the session. */
     private static boolean powerfailsBroken;
@@ -93,6 +94,30 @@ public final class Mods {
         return !guardsBroken && MobGuards.isAvailable();
     }
 
+    /** Opis' chunk update times and loaded chunks; see {@link OpisLayer}. */
+    public static boolean isOpisAvailable() {
+        if (opis == null) {
+            opis = Loader.isModLoaded("Opis") && supported(
+                "Opis",
+                "1.4.12-mapless",
+                hasField("mcp.mobius.opis.network.enums.Message", "LIST_TIMING_CHUNK_DIM"));
+        }
+        return opis;
+    }
+
+    /** Opis is there and the player may use it on this server (an operator, cheats on in single player). */
+    public static boolean isOpisAllowed() {
+        if (!isOpisAvailable()) {
+            return false;
+        }
+        try {
+            return OpisLayer.isAllowed();
+        } catch (Throwable t) {
+            fail(Addon.OPIS, t);
+            return false;
+        }
+    }
+
     private static Boolean nodeLayerDelete;
 
     /**
@@ -134,7 +159,8 @@ public final class Mods {
         AE2_WIRELESS,
         CHARGERS,
         DRONES,
-        GUARDS
+        GUARDS,
+        OPIS
     }
 
     private static final Set<Addon> FAILED = new HashSet<>();
@@ -183,6 +209,9 @@ public final class Mods {
             case GUARDS:
                 guardsBroken = true;
                 break;
+            case OPIS:
+                opis = false;
+                break;
         }
         if (FAILED.add(addon)) {
             WayFarMap.LOG.error("The " + addon + " map layer failed and is turned off until restart", t);
@@ -212,6 +241,16 @@ public final class Mods {
 
     private static Class<?> find(String className) throws ClassNotFoundException {
         return Class.forName(className, false, Mods.class.getClassLoader());
+    }
+
+    private static boolean hasField(String className, String field) {
+        try {
+            find(className).getField(field);
+            return true;
+        } catch (Throwable ignored) {
+            // Missing class or field.
+            return false;
+        }
     }
 
     private static boolean hasMethod(String className, String method) {

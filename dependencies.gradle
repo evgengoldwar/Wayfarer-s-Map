@@ -48,4 +48,6 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:OpenModsLib:0.10.14:dev") { transitive = false }
     // Optional AE2 integration: the coverage of the player's wireless access points on the maps.
     compileOnly("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-1040-GTNH:dev") { transitive = false }
+    // Optional Opis integration: the slowest and the loaded chunks of the server, on the maps.
+    compileOnly("com.github.GTNewHorizons:Opis:1.4.12-mapless:dev") { transitive = false }
 }
