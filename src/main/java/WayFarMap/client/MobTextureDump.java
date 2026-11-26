@@ -71,6 +71,7 @@ import cpw.mods.fml.common.ModContainer;
  * {@code /wfmobtextures [filter]}: the textures of every mob the game knows (vanilla and mods), or of those whose
  * "mod/name" contains the filter, saved as files into {@code wayfarmap/dumps/mob-textures-<date>/}, with a zip of that
  * folder next to it.
+ * {@code /wfmobtexturesmissing [filter]} uses the same format for mobs without a ready-made map icon.
  * <p>
  * Per mob: the texture its renderer names, every texture bound while the mob is drawn once (layers: a sheep's wool,
  * a spider's eyes, an enderman's eyes...), and the other pictures in the same folder when it is an entity folder
@@ -83,6 +84,7 @@ import cpw.mods.fml.common.ModContainer;
 public final class MobTextureDump extends CommandBase {
 
     public static final String COMMAND = "wfmobtextures";
+    private static final String MISSING_COMMAND = "wfmobtexturesmissing";
 
     /** Side of the buffer the mob is drawn into, only to see which textures it binds. */
     private static final int SIZE = 64;
@@ -90,6 +92,16 @@ public final class MobTextureDump extends CommandBase {
 
     /** Textures bound while a mob is drawn for the dump; null at any other time. */
     private static Set<ResourceLocation> recording;
+
+    private final boolean onlyMissing;
+
+    public MobTextureDump() {
+        this(false);
+    }
+
+    public MobTextureDump(boolean onlyMissing) {
+        this.onlyMissing = onlyMissing;
+    }
 
     /** Called for every texture bound (see MixinTextureManager): noted only while a mob is drawn for the dump. */
     public static void noteBound(ResourceLocation location) {
@@ -101,12 +113,12 @@ public final class MobTextureDump extends CommandBase {
 
     @Override
     public String getCommandName() {
-        return COMMAND;
+        return onlyMissing ? MISSING_COMMAND : COMMAND;
     }
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/" + COMMAND + " [mod/name filter]";
+        return "/" + getCommandName() + " [mod/name filter]";
     }
 
     @Override
@@ -131,11 +143,11 @@ public final class MobTextureDump extends CommandBase {
             return;
         }
         try {
-            Dump dump = new Dump(mc, args.length == 0 ? null : String.join(" ", args));
+            Dump dump = new Dump(mc, args.length == 0 ? null : String.join(" ", args), onlyMissing);
             dump.run();
             ChatComponentText message = new ChatComponentText(
                 EnumChatFormatting.GREEN + Lang.format(
-                    "wayfarmap.mobtextures.done",
+                    onlyMissing ? "wayfarmap.mobtextures.missingDone" : "wayfarmap.mobtextures.done",
                     dump.mobs,
                     dump.written.size(),
                     dump.folder.getName(),
@@ -160,6 +172,7 @@ public final class MobTextureDump extends CommandBase {
 
         final Minecraft mc;
         final String filter;
+        final boolean onlyMissing;
         final File folder, zip;
         final Resources resources = new Resources();
         /** Saved textures: resource ("mod:path") or generated name, to the file's path in the folder. */
@@ -168,13 +181,15 @@ public final class MobTextureDump extends CommandBase {
         Framebuffer framebuffer;
         int mobs;
 
-        Dump(Minecraft mc, String filter) {
+        Dump(Minecraft mc, String filter, boolean onlyMissing) {
             this.mc = mc;
             this.filter = filter == null ? null : filter.toLowerCase(Locale.ROOT);
+            this.onlyMissing = onlyMissing;
             String date = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.ROOT).format(new Date());
             File dumps = new File(new File(mc.mcDataDir, "wayfarmap"), "dumps");
-            folder = new File(dumps, "mob-textures-" + date);
-            zip = new File(dumps, "mob-textures-" + date + ".zip");
+            String name = (onlyMissing ? "mob-textures-missing-" : "mob-textures-") + date;
+            folder = new File(dumps, name);
+            zip = new File(dumps, name + ".zip");
         }
 
         void run() throws Exception {
@@ -186,6 +201,9 @@ public final class MobTextureDump extends CommandBase {
             try {
                 framebuffer = new Framebuffer(SIZE, SIZE, true);
                 for (Map.Entry<String, Class<?>> kind : kinds.entrySet()) {
+                    if (onlyMissing && MobMapIcons.hasIcon(kind.getValue())) {
+                        continue;
+                    }
                     mobs++;
                     infos.add(dumpMob(kind.getKey(), kind.getValue()));
                 }
@@ -458,7 +476,7 @@ public final class MobTextureDump extends CommandBase {
         }
 
         private void writeReadme() throws IOException {
-            String text = "Mob textures dumped by Wayfarer's Map (/" + COMMAND
+            String text = "Mob textures dumped by Wayfarer's Map (/" + (onlyMissing ? MISSING_COMMAND : COMMAND)
                 + (filter == null ? "" : " " + filter)
                 + ")\n"
                 + "Minecraft "

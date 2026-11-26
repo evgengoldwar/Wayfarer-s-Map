@@ -12,6 +12,7 @@ import WayFarMap.client.KeyHandler;
 import WayFarMap.client.Lang;
 import WayFarMap.client.MinimapRenderer;
 import WayFarMap.client.MobIconDump;
+import WayFarMap.client.MobMapIcons;
 import WayFarMap.client.MobTextureDump;
 import WayFarMap.client.PerfTicks;
 import WayFarMap.client.PlayerTrail;
@@ -65,6 +66,7 @@ public class ClientProxy extends CommonProxy {
             // Resource packs can add themes and change the built-in ones (their colors and pictures); the
             // CustomThemes folder is read with them.
             ((IReloadableResourceManager) resourceManager).registerReloadListener(reloaded -> Theme.reload());
+            ((IReloadableResourceManager) resourceManager).registerReloadListener(reloaded -> MobMapIcons.reload());
         }
 
         FMLCommonHandler.instance()
@@ -137,6 +139,7 @@ public class ClientProxy extends CommonProxy {
         // Material to make the map's mob icons from: every mob drawn by the game, its skin and model.
         ClientCommandHandler.instance.registerCommand(new MobIconDump());
         ClientCommandHandler.instance.registerCommand(new MobTextureDump());
+        ClientCommandHandler.instance.registerCommand(new MobTextureDump(true));
 
         MinecraftForge.EVENT_BUS.register(new IsoEntityDrawer.NameTags());
         MinecraftForge.EVENT_BUS.register(new MinimapRenderer());

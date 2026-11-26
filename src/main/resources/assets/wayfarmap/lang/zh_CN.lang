@@ -977,6 +977,7 @@ wayfarmap.mobicons.done=生物图标已导出：%s 个生物（%s 个无法绘�
 wayfarmap.mobicons.failed=无法导出生物图标：%s
 wayfarmap.mobicons.noFramebuffer=无法绘制生物图标：帧缓冲已关闭（视频设置）
 wayfarmap.mobtextures.done=生物材质已导出：%s 个生物，%s 张材质，保存到 wayfarmap/dumps/%s 及压缩包 %s（点击打开文件夹）。/wfmobtextures <文本> 只导出 模组/名称 包含该文本的生物。
+wayfarmap.mobtextures.missingDone=没有地图图标的生物材质已导出：%s 个生物，%s 张材质，保存到 wayfarmap/dumps/%s 及压缩包 %s（点击打开文件夹）。
 wayfarmap.mobtextures.failed=无法导出生物材质：%s
 wayfarmap.mobtextures.noFramebuffer=无法导出生物材质：帧缓冲已关闭（视频设置）
 wayfarmap.vanilla.gui.done=完成

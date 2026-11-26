@@ -39,7 +39,7 @@ It is **client-side**: the map is built from the chunks your client loads, so it
 - **Day & night** — the map darkens with the game clock, and torches, lamps and lava glow warm. Can be locked to always day or always night.
 - **Other dimensions** — browse any saved dimension without going there (Nether coordinates are converted 1:8).
 - **Search** — in biome, ore or fluid view, type to grey out everything else and outline the matches.
-- **Players & mobs** — shown with their face icon (cut from the mob texture, modded mobs too) in a colored frame: 🔴 hostile, 🟢 animals, 🟡 others. Filters per category.
+- **Players & mobs** — shown with face icons in colored frames: 🔴 hostile, 🟢 animals, 🟡 others. The flat map and minimap use the supplied pixel icons where available and generate faces for other mobs. Filters per category.
 - **Chunk grid**, **right-click teleport** (when you have `/tp` permission) and a built-in **help screen** (`?` on the map).
 
 ### 🧊 3D map
@@ -191,6 +191,8 @@ cd Wayfarer-s-Map
 ```
 
 The jar is written to `build/libs/`. Run `./gradlew spotlessApply` before committing to format the code.
+
+To gather textures for more map icons, run `/wfmobtexturesmissing [mod/name filter]` in game. It saves a ZIP in `wayfarmap/dumps/` for mobs without a ready-made icon. Use `/wfmobtextures` for the full texture dump.
 
 ## 🤝 Contributing
 

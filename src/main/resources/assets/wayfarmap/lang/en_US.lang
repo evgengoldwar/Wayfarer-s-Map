@@ -977,6 +977,7 @@ wayfarmap.mobicons.done=Mob icons dumped: %s mobs (%s could not be drawn). Send 
 wayfarmap.mobicons.failed=Could not dump the mob icons: %s
 wayfarmap.mobicons.noFramebuffer=Mob icons can't be drawn: framebuffers are off (Video Settings)
 wayfarmap.mobtextures.done=Mob textures dumped: %s mobs, %s textures, into wayfarmap/dumps/%s and the archive %s (click to open the folder). /wfmobtextures <text> dumps only the mobs whose mod/name contains it.
+wayfarmap.mobtextures.missingDone=Textures dumped for mobs without map icons: %s mobs, %s textures, into wayfarmap/dumps/%s and the archive %s (click to open the folder).
 wayfarmap.mobtextures.failed=Could not dump the mob textures: %s
 wayfarmap.mobtextures.noFramebuffer=Mob textures can't be dumped: framebuffers are off (Video Settings)
 wayfarmap.vanilla.gui.done=Done

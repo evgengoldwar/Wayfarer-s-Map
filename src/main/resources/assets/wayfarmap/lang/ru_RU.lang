@@ -977,6 +977,7 @@ wayfarmap.mobicons.done=Иконки мобов сохранены: мобов %
 wayfarmap.mobicons.failed=Не удалось сохранить иконки мобов: %s
 wayfarmap.mobicons.noFramebuffer=Нельзя нарисовать иконки мобов: отключены фреймбуферы (Настройки графики)
 wayfarmap.mobtextures.done=Текстуры мобов сохранены: мобов %s, текстур %s, в wayfarmap/dumps/%s и архив %s (нажми, чтобы открыть папку). /wfmobtextures <текст> сохраняет только мобов, у которых мод/имя содержит текст.
+wayfarmap.mobtextures.missingDone=Текстуры мобов без готовых иконок для карты сохранены: мобов %s, текстур %s, в wayfarmap/dumps/%s и архив %s (нажми, чтобы открыть папку).
 wayfarmap.mobtextures.failed=Не удалось сохранить текстуры мобов: %s
 wayfarmap.mobtextures.noFramebuffer=Нельзя сохранить текстуры мобов: отключены фреймбуферы (Настройки графики)
 wayfarmap.vanilla.gui.done=Готово

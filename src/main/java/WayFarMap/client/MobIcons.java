@@ -111,7 +111,13 @@ public final class MobIcons {
      * @return false if it has none (yet), so the caller can draw something else
      */
     public static boolean draw(EntityLivingBase entity, double sx, double sy, float size, float alpha) {
-        Integer icon = icon(entity);
+        if (entity == null) {
+            return false;
+        }
+        Integer icon = MobMapIcons.texture(entity.getClass());
+        if (icon == null) {
+            icon = icon(entity);
+        }
         if (icon == null) {
             return false;
         }
@@ -136,7 +142,7 @@ public final class MobIcons {
     }
 
     private static Integer icon(EntityLivingBase entity) {
-        if (entity == null || failures >= 5 || !OpenGlHelper.isFramebufferEnabled() || !initReflection()) {
+        if (failures >= 5 || !OpenGlHelper.isFramebufferEnabled() || !initReflection()) {
             return null;
         }
         Object world = Minecraft.getMinecraft().theWorld;

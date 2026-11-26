@@ -1090,7 +1090,7 @@ public final class MapDrawer {
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         // Exactly over the dark tile: a face a pixel smaller left half pixels of it that showed as a dark line on
         // one side.
-        // Its icon drawn by the game; until it is made (or if it can't be), its face cut out of its skin.
+        // Its ready-made or generated icon; if neither is available, its face cut out of its skin.
         double cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
         float shown = (float) (x1 - x0);
         if (entity == null

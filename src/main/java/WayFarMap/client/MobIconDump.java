@@ -72,7 +72,7 @@ import cpw.mods.fml.common.registry.EntityRegistry;
 
 /**
  * {@code /wfmobicons [filter]}: everything needed to see why a mob's icon on the map looks as it does, for every mob
- * the game knows (vanilla and mods), or those whose "mod/name" contains the filter. Per mob: the icon the map draws
+ * the game knows (vanilla and mods), or those whose "mod/name" contains the filter. Per mob: the generated icon
  * ({@link MobIcons}, and how small it shows on the map), the face cut out of the skin it falls back to
  * ({@link EntityIcons}), the mob drawn by the game from the front, three quarters, the side and above, a picture of
  * its model's parts each in its own color with its number, its skin, and in {@code mobs.json} its model (every part
@@ -304,7 +304,7 @@ public final class MobIconDump extends CommandBase {
                 }
             }
 
-            // The icon as the map makes it, and what was tried for it.
+            // The icon generated for mobs without a ready-made icon, and what was tried for it.
             Map<String, Object> trace = new LinkedHashMap<>();
             float[] frame = null;
             if (render instanceof RendererLivingEntity) {
@@ -823,8 +823,8 @@ public final class MobIconDump extends CommandBase {
                 + "                   or not.\n"
                 + "skin/<mob>.png     the mob's texture.\n\n"
                 + "Pictures (each also in its own folder):\n"
-                + "  icon          the icon the map draws (MobIcons): the mob rendered unlit facing the viewer, the\n"
-                + "                head cut out (what differs when the head part is hidden), else the whole mob.\n"
+                + "  icon          the generated icon (used if there is no ready-made icon): the mob rendered unlit\n"
+                + "                facing the viewer, the head cut out, else the whole mob.\n"
                 + "  onMap         that icon on the map's dark tile at "
                 + Arrays.toString(MAP_SIZES)
                 + " px, enlarged.\n"
@@ -994,7 +994,7 @@ public final class MobIconDump extends CommandBase {
 
     /** The mod that added the mob: from Forge's list, else the "mod.Name" prefix of its name, else the game. */
     @SuppressWarnings("unchecked")
-    static String modOf(Class<?> kind, String name) {
+    private static String modOf(Class<?> kind, String name) {
         try {
             EntityRegistry.EntityRegistration registration = EntityRegistry.instance()
                 .lookupModSpawn((Class<? extends Entity>) kind, false);
@@ -1072,6 +1072,13 @@ public final class MobIconDump extends CommandBase {
         }
     }
 
+    /** Stable key shared by the map icons and the dumps. Use the concrete class, including for unnamed mobs. */
+    static String mobKey(Class<?> kind) {
+        Object registeredName = EntityList.classToStringMapping.get(kind);
+        String name = registeredName instanceof String ? (String) registeredName : null;
+        return modOf(kind, name) + "/" + (name == null ? kind.getSimpleName() : name);
+    }
+
     /**
      * Living mobs by "mod/name": the named ones, then those with a renderer but no name. Not players; only those whose
      * "mod/name" contains the filter (lowercase) if there is one.
@@ -1082,13 +1089,13 @@ public final class MobIconDump extends CommandBase {
             if (entry.getKey() instanceof Class && entry.getValue() instanceof String
                 && isMob((Class<?>) entry.getKey())) {
                 Class<?> kind = (Class<?>) entry.getKey();
-                kinds.put(modOf(kind, (String) entry.getValue()) + "/" + entry.getValue(), kind);
+                kinds.put(mobKey(kind), kind);
             }
         }
         for (Object key : ((Map<?, ?>) RenderManager.instance.entityRenderMap).keySet()) {
             if (key instanceof Class && isMob((Class<?>) key) && !kinds.containsValue(key)) {
                 Class<?> kind = (Class<?>) key;
-                kinds.put(modOf(kind, null) + "/" + kind.getSimpleName(), kind);
+                kinds.put(mobKey(kind), kind);
             }
         }
         if (filter != null) {
