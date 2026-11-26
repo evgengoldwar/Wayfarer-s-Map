@@ -126,7 +126,7 @@ public class GuiTeleportY extends ScaledScreen {
 
     @Override
     public void drawScaled(int mouseX, int mouseY, float partialTicks) {
-        Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
+        Theme.dimScreen(0, 0, width, height);
         Theme.panel(left, top, left + WIDTH, top + HEIGHT);
         WindowHeader.draw(
             fontRendererObj,

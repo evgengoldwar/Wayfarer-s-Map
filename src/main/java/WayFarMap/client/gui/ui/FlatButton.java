@@ -22,6 +22,11 @@ public class FlatButton extends GuiButton {
     /** How lit the button is by the mouse, fading in and out. */
     private final Smooth hover = new Smooth(0);
 
+    /** The part of the theme's atlas the button is drawn with: "button", or "icon_button" for one of icons. */
+    protected String skinPart() {
+        return "button";
+    }
+
     public FlatButton(int id, int x, int y, int width, int height, String text) {
         super(id, x, y, width, height, text);
     }
@@ -86,6 +91,9 @@ public class FlatButton extends GuiButton {
     /** The box: lit by the mouse with a short fade, in the accent color when active. */
     protected void drawBackground(boolean hovered) {
         double lit = hover.update(hovered ? 1 : 0, 22);
+        if (drawSprite(lit)) {
+            return;
+        }
         int background, border;
         if (!enabled) {
             background = Theme.CONTROL_DISABLED;
@@ -112,5 +120,36 @@ public class FlatButton extends GuiButton {
             return;
         }
         Theme.outline(xPosition, yPosition, xPosition + width, yPosition + height, border);
+    }
+
+    /**
+     * The button in the theme's pictures: its state's picture ({@code .disabled}, {@code .active},
+     * {@code .danger}), and the lit one ({@code .hover}) fading in over it; false when the theme has none.
+     */
+    private boolean drawSprite(double lit) {
+        String part = skinPart();
+        Skin.Sprite base;
+        Skin.Sprite over = null;
+        if (!enabled) {
+            base = Skin.first(part + ".disabled", "button.disabled", part, "button");
+        } else if (active) {
+            base = Skin.first(part + ".active", "button.active", part, "button");
+            over = Skin.first(part + ".active.hover", "button.active.hover");
+        } else if (danger) {
+            base = Skin.first(part + ".danger", "button.danger", part, "button");
+            over = Skin.first(part + ".danger.hover", "button.danger.hover", part + ".hover", "button.hover");
+        } else {
+            base = Skin.first(part, "button");
+            over = Skin.first(part + ".hover", "button.hover");
+        }
+        if (base == null) {
+            return false;
+        }
+        int x1 = xPosition + width, y1 = yPosition + height;
+        Skin.draw(base, xPosition, yPosition, x1, y1, 0xFFFFFFFF, 1);
+        if (over != null && lit > 0) {
+            Skin.draw(over, xPosition, yPosition, x1, y1, 0xFFFFFFFF, lit);
+        }
+        return true;
     }
 }

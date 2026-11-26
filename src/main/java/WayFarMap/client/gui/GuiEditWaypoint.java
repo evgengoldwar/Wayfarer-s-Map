@@ -489,7 +489,7 @@ public class GuiEditWaypoint extends ScaledScreen {
 
     @Override
     public void drawScaled(int mouseX, int mouseY, float partialTicks) {
-        Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
+        Theme.dimScreen(0, 0, width, height);
         Theme.panel(left - 10, top - HEADER_ABOVE, left + 230, top + BUTTON_ROW + 27);
         WindowHeader.draw(
             fontRendererObj,

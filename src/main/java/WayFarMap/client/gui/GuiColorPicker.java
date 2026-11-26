@@ -368,7 +368,7 @@ public class GuiColorPicker extends ScaledScreen {
             }
         }
 
-        Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
+        Theme.dimScreen(0, 0, width, height);
         Theme.panel(left, top, left + panelWidth, top + panelHeight);
         WindowHeader.draw(
             fontRendererObj,

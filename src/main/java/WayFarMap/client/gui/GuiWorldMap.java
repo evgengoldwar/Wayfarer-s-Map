@@ -1512,7 +1512,7 @@ public class GuiWorldMap extends ScaledScreen {
 
     /** The welcome window over the dimmed map; the help button it points to is outlined meanwhile. */
     private void drawWelcome(int mouseX, int mouseY) {
-        Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
+        Theme.dimScreen(0, 0, width, height);
         if (helpButton != null && helpButton.visible) {
             // Pulsing outline around the help button the window points to.
             float pulse = 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() / 250.0);
@@ -1973,7 +1973,7 @@ public class GuiWorldMap extends ScaledScreen {
                 String warning = Lang.format("wayfarmap.gui.iso_not_recording");
                 int w = fontRendererObj.getStringWidth(warning);
                 int x = (width - w) / 2, y = height - FOOTER_HEIGHT - 16;
-                Theme.fill(x - 4, y - 3, x + w + 4, y + 11, Theme.LABEL_BG);
+                Theme.label(x - 4, y - 3, x + w + 4, y + 11);
                 Theme.text(fontRendererObj, warning, x, y, Theme.DANGER);
             }
         }
@@ -2294,7 +2294,7 @@ public class GuiWorldMap extends ScaledScreen {
         String label = "Y " + layer * 16 + "-" + (layer * 16 + 15);
         int labelWidth = fontRendererObj.getStringWidth(label);
         int labelY = (knobTop + knobBottom) / 2 - 4;
-        Theme.fill(x - labelWidth - 10, labelY - 2, x - 4, labelY + 10, Theme.LABEL_BG);
+        Theme.label(x - labelWidth - 10, labelY - 2, x - 4, labelY + 10);
         Theme.text(fontRendererObj, label, x - labelWidth - 7, labelY, hovered ? Theme.TEXT : Theme.TEXT_MUTED);
     }
 
@@ -3909,7 +3909,7 @@ public class GuiWorldMap extends ScaledScreen {
         if (y + lines.size() * 10 + 4 > height - FOOTER_HEIGHT) {
             y = mouseY - lines.size() * 10 - 8;
         }
-        Theme.fill(x - 4, y - 3, x + textWidth + 4, y + lines.size() * 10 + 1, Theme.LABEL_BG);
+        Theme.label(x - 4, y - 3, x + textWidth + 4, y + lines.size() * 10 + 1);
         Theme.fill(x - 4, y - 3, x - 2, y + lines.size() * 10 + 1, color);
         for (int i = 0; i < lines.size(); i++) {
             Theme.text(fontRendererObj, lines.get(i), x + 1, y + i * 10, i == 0 ? color : Theme.TEXT);

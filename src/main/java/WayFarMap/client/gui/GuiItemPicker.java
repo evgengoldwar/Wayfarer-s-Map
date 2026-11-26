@@ -266,7 +266,7 @@ public class GuiItemPicker extends ScaledScreen {
 
     @Override
     public void drawScaled(int mouseX, int mouseY, float partialTicks) {
-        Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
+        Theme.dimScreen(0, 0, width, height);
         Theme.panel(gridX - 8, 4, gridX + columns * CELL + 8, gridY + rows * CELL + 34);
         WindowHeader.draw(
             fontRendererObj,

@@ -83,7 +83,7 @@ final class ImportNoticeWindow {
     void draw(int screenWidth, int screenHeight, int mouseX, int mouseY) {
         int[] o = origin(screenWidth, screenHeight);
         int left = o[0], top = o[1], right = left + WIDTH, bottom = top + height();
-        Theme.fill(0, 0, screenWidth, screenHeight, Theme.SCREEN_DIM);
+        Theme.dimScreen(0, 0, screenWidth, screenHeight);
         Theme.panel(left, top, right, bottom);
 
         // Header: the icon on an accent tile, the title, and the folder it came from.

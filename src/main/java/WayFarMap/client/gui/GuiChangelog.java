@@ -218,7 +218,7 @@ public class GuiChangelog extends ScaledScreen {
 
     @Override
     public void drawScaled(int mouseX, int mouseY, float partialTicks) {
-        Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
+        Theme.dimScreen(0, 0, width, height);
         int windowHeight = windowHeight();
         int left = (width - WIDTH) / 2, top = Math.max(8, (height - windowHeight) / 2);
         int right = left + WIDTH, bottom = top + windowHeight;

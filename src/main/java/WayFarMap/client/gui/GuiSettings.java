@@ -27,6 +27,7 @@ import WayFarMap.client.gui.ui.FlatButton;
 import WayFarMap.client.gui.ui.FlatTextField;
 import WayFarMap.client.gui.ui.Icons;
 import WayFarMap.client.gui.ui.ScaledScreen;
+import WayFarMap.client.gui.ui.Skin;
 import WayFarMap.client.gui.ui.Theme;
 import WayFarMap.client.map.BlockColors;
 
@@ -1078,7 +1079,7 @@ public class GuiSettings extends ScaledScreen {
             shownScroll = scroll;
         }
 
-        Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
+        Theme.dimScreen(0, 0, width, height);
         Theme.panel(left, top, right, bottom);
         Theme.fill(left + 1, top + 1, left + SIDEBAR_WIDTH, bottom - 1, Theme.PANEL_ALT);
         Theme.fill(left + SIDEBAR_WIDTH, top + 1, left + SIDEBAR_WIDTH + 1, bottom - 1, Theme.BORDER);
@@ -1874,6 +1875,10 @@ public class GuiSettings extends ScaledScreen {
 
     /** A value of a list, translated. */
     private static String choiceText(Config.ChoiceOption choice, int value) {
+        if (Config.isTheme(choice)) {
+            // Themes added by a resource pack or the CustomThemes folder have names of their own.
+            return Theme.displayName(value);
+        }
         return Lang.format(choice.langKey() + "." + choice.values[value]);
     }
 
@@ -1965,10 +1970,23 @@ public class GuiSettings extends ScaledScreen {
             int switchX = x + CONTROL_WIDTH - 24;
             int switchY = y + (h - 12) / 2;
             boolean rowHovered = hoveredOption == option;
-            Theme.fill(switchX, switchY, switchX + 24, switchY + 12, Theme.blend(Theme.CONTROL, Theme.ACCENT, knob));
-            Theme.outline(switchX, switchY, switchX + 24, switchY + 12, rowHovered ? Theme.ACCENT : Theme.BORDER);
             int knobX = switchX + 2 + Math.round(12 * knob);
-            Theme.fill(knobX, switchY + 2, knobX + 8, switchY + 10, Theme.TEXT);
+            Skin.Sprite off = Skin.first(rowHovered ? "switch.off.hover" : "switch.off", "switch.off");
+            Skin.Sprite onSprite = Skin.first(rowHovered ? "switch.on.hover" : "switch.on", "switch.on");
+            if (off != null || onSprite != null) {
+                // The two pictures of the switch fading into each other as it slides.
+                Skin.draw(off != null ? off : onSprite, switchX, switchY, switchX + 24, switchY + 12, -1, 1);
+                if (onSprite != null) {
+                    Skin.draw(onSprite, switchX, switchY, switchX + 24, switchY + 12, -1, knob);
+                }
+            } else {
+                Theme
+                    .fill(switchX, switchY, switchX + 24, switchY + 12, Theme.blend(Theme.CONTROL, Theme.ACCENT, knob));
+                Theme.outline(switchX, switchY, switchX + 24, switchY + 12, rowHovered ? Theme.ACCENT : Theme.BORDER);
+            }
+            if (!Theme.sprite(knobX, switchY + 2, knobX + 8, switchY + 10, "switch.knob")) {
+                Theme.fill(knobX, switchY + 2, knobX + 8, switchY + 10, Theme.TEXT);
+            }
             String state = Lang.format(on ? "options.on" : "options.off");
             Theme.text(
                 fontRendererObj,
@@ -1984,13 +2002,27 @@ public class GuiSettings extends ScaledScreen {
             boolean anyHovered = Theme.inside(mouseX, mouseY, edges[0], y, edges[edges.length - 1], y + h);
             boolean language = Config.isLanguage(option);
             int named = choice.get();
+            boolean pictured = Skin.get("segment") != null;
             for (int i = 0; i < choice.values.length; i++) {
                 boolean chosen = i == choice.get();
                 boolean over = anyHovered && mouseX >= edges[i] && mouseX < edges[i + 1];
-                int background = chosen ? Theme.ACCENT_DIM : over ? Theme.CONTROL_HOVER : Theme.CONTROL;
-                Theme.fill(edges[i], y, edges[i + 1], y + h, background);
-                if (i > 0) {
-                    Theme.fill(edges[i], y + 1, edges[i] + 1, y + h - 1, Theme.BORDER);
+                if (pictured) {
+                    String state = chosen ? over ? "segment.selected.hover" : "segment.selected"
+                        : over ? "segment.hover" : "segment";
+                    Theme.sprite(
+                        edges[i],
+                        y,
+                        edges[i + 1],
+                        y + h,
+                        state,
+                        chosen ? "segment.selected" : over ? "segment.hover" : "segment",
+                        "segment");
+                } else {
+                    int background = chosen ? Theme.ACCENT_DIM : over ? Theme.CONTROL_HOVER : Theme.CONTROL;
+                    Theme.fill(edges[i], y, edges[i + 1], y + h, background);
+                    if (i > 0) {
+                        Theme.fill(edges[i], y + 1, edges[i] + 1, y + h - 1, Theme.BORDER);
+                    }
                 }
                 if (language) {
                     int flagX = (edges[i] + edges[i + 1] + 1 - Flags.WIDTH) / 2;
@@ -2022,15 +2054,16 @@ public class GuiSettings extends ScaledScreen {
                     named == choice.get() ? Theme.TEXT : Theme.TEXT_MUTED);
             }
             int last = edges[edges.length - 1];
-            Theme.outline(edges[0], y, last, y + h, anyHovered ? Theme.ACCENT : Theme.BORDER);
-            // A line in full accent along the bottom of the chosen one, inside the outline.
-            int chosenLeft = Math.max(edges[choice.get()], edges[0] + 1);
-            int chosenRight = Math.min(edges[choice.get() + 1], last - 1);
-            Theme.fill(chosenLeft, y + h - 2, chosenRight, y + h - 1, Theme.ACCENT);
+            if (!pictured) {
+                Theme.outline(edges[0], y, last, y + h, anyHovered ? Theme.ACCENT : Theme.BORDER);
+                // A line in full accent along the bottom of the chosen one, inside the outline.
+                int chosenLeft = Math.max(edges[choice.get()], edges[0] + 1);
+                int chosenRight = Math.min(edges[choice.get() + 1], last - 1);
+                Theme.fill(chosenLeft, y + h - 2, chosenRight, y + h - 1, Theme.ACCENT);
+            }
         } else if (option instanceof Config.ChoiceOption) {
             Config.ChoiceOption choice = (Config.ChoiceOption) option;
-            Theme.fill(x, y, x + CONTROL_WIDTH, y + h, hovered ? Theme.CONTROL_HOVER : Theme.CONTROL);
-            Theme.outline(x, y, x + CONTROL_WIDTH, y + h, hovered ? Theme.ACCENT : Theme.BORDER);
+            controlBox(x, y, x + CONTROL_WIDTH, y + h, hovered, "selector");
             boolean backHovered = hovered && mouseX < x + CONTROL_WIDTH / 2;
             Theme.text(fontRendererObj, "<", x + 4, y + (h - 8) / 2, backHovered ? Theme.ACCENT : Theme.TEXT_MUTED);
             Theme.text(
@@ -2039,7 +2072,7 @@ public class GuiSettings extends ScaledScreen {
                 x + CONTROL_WIDTH - 9,
                 y + (h - 8) / 2,
                 hovered && !backHovered ? Theme.ACCENT : Theme.TEXT_MUTED);
-            String value = Lang.format(option.langKey() + "." + choice.values[choice.get()]);
+            String value = choiceText(choice, choice.get());
             Theme.centered(
                 fontRendererObj,
                 Theme.ellipsize(fontRendererObj, value, CONTROL_WIDTH - 24),
@@ -2061,15 +2094,13 @@ public class GuiSettings extends ScaledScreen {
             }
         } else if (option instanceof Config.ColorOption) {
             int rgb = ((Config.ColorOption) option).get();
-            Theme.fill(x, y, x + CONTROL_WIDTH, y + h, hovered ? Theme.CONTROL_HOVER : Theme.CONTROL);
-            Theme.outline(x, y, x + CONTROL_WIDTH, y + h, hovered ? Theme.ACCENT : Theme.BORDER);
+            controlBox(x, y, x + CONTROL_WIDTH, y + h, hovered, "button");
             // A swatch of the color, then its code.
             Theme.fill(x + 3, y + 3, x + 3 + 2 * (h - 6), y + h - 3, 0xFF000000 | rgb);
             Theme.outline(x + 3, y + 3, x + 3 + 2 * (h - 6), y + h - 3, Theme.BORDER);
             Theme.text(fontRendererObj, Config.ColorOption.hex(rgb), x + 8 + 2 * (h - 6), y + (h - 8) / 2, Theme.TEXT);
         } else if (option instanceof Config.PositionOption) {
-            Theme.fill(x, y, x + CONTROL_WIDTH, y + h, hovered ? Theme.CONTROL_HOVER : Theme.CONTROL);
-            Theme.outline(x, y, x + CONTROL_WIDTH, y + h, hovered ? Theme.ACCENT : Theme.BORDER);
+            controlBox(x, y, x + CONTROL_WIDTH, y + h, hovered, "button");
             Theme.centered(
                 fontRendererObj,
                 Theme.ellipsize(fontRendererObj, Lang.format("wayfarmap.minimap_position.change"), CONTROL_WIDTH - 8),
@@ -2088,24 +2119,61 @@ public class GuiSettings extends ScaledScreen {
             }
             boolean active = hovered || draggingSlider == option;
             int trackY = y + h / 2 - 1;
-            Theme.fill(x + 3, trackY, x + CONTROL_WIDTH - 3, trackY + 3, Theme.CONTROL);
             int knobX = x + 3 + (int) Math.round(t * (CONTROL_WIDTH - 6));
-            Theme.fill(x + 3, trackY, knobX, trackY + 3, active ? Theme.ACCENT : Theme.ACCENT_DIM);
+            Skin.Sprite track = Skin.get("slider.track");
+            if (track != null) {
+                int th = track.drawHeight > 0 ? track.drawHeight : 3;
+                int ty = trackY + 1 - th / 2;
+                Skin.draw(track, x + 3, ty, x + CONTROL_WIDTH - 3, ty + th, -1, 1);
+                Skin.Sprite fill = Skin.first(active ? "slider.fill.hover" : "slider.fill", "slider.fill");
+                if (fill != null && knobX > x + 3) {
+                    Skin.draw(fill, x + 3, ty, knobX, ty + th, -1, 1);
+                }
+            } else {
+                Theme.fill(x + 3, trackY, x + CONTROL_WIDTH - 3, trackY + 3, Theme.CONTROL);
+                Theme.fill(x + 3, trackY, knobX, trackY + 3, active ? Theme.ACCENT : Theme.ACCENT_DIM);
+            }
             // Where the default value is: a tick across the track, to slide back to.
             int defaultX = x + 3 + (int) Math.round(defaultFraction(option) * (CONTROL_WIDTH - 6));
             Theme.fill(defaultX, trackY - 2, defaultX + 1, trackY + 5, Theme.TEXT_MUTED);
-            Theme.fill(knobX - 3, y + 2, knobX + 3, y + h - 2, active ? Theme.ACCENT : Theme.TEXT);
-            Theme.outline(knobX - 3, y + 2, knobX + 3, y + h - 2, Theme.BORDER);
+            Skin.Sprite knobSprite = Skin.first(active ? "slider.knob.hover" : "slider.knob", "slider.knob");
+            if (knobSprite != null) {
+                int kw = knobSprite.drawWidth > 0 ? knobSprite.drawWidth : 6;
+                Skin.draw(knobSprite, knobX - kw / 2.0, y + 2, knobX + kw / 2.0, y + h - 2, -1, 1);
+            } else {
+                Theme.fill(knobX - 3, y + 2, knobX + 3, y + h - 2, active ? Theme.ACCENT : Theme.TEXT);
+                Theme.outline(knobX - 3, y + 2, knobX + 3, y + h - 2, Theme.BORDER);
+            }
             // The value in a small box left of the slider.
             int boxX = x - controlLeftWidth(option);
             // The value can be clicked to type it in: lit under the mouse.
             boolean valueHovered = isTypable(option) && Theme.inside(mouseX, mouseY, boxX, y + 1, x - 4, y + h - 1);
             active |= valueHovered;
-            Theme.fill(boxX, y + 1, x - 4, y + h - 1, Theme.FIELD);
-            int boxBorder = valueHovered ? Theme.ACCENT : active ? Theme.ACCENT_DIM : Theme.BORDER;
-            Theme.outline(boxX, y + 1, x - 4, y + h - 1, boxBorder);
+            if (!Theme.sprite(
+                boxX,
+                y + 1,
+                x - 4,
+                y + h - 1,
+                valueHovered || active ? "value.hover" : "value",
+                "value",
+                valueHovered || active ? "field.focused" : "field",
+                "field")) {
+                Theme.fill(boxX, y + 1, x - 4, y + h - 1, Theme.FIELD);
+                int boxBorder = valueHovered ? Theme.ACCENT : active ? Theme.ACCENT_DIM : Theme.BORDER;
+                Theme.outline(boxX, y + 1, x - 4, y + h - 1, boxBorder);
+            }
             int valueColor = active ? Theme.TEXT : Theme.TEXT_MUTED;
             Theme.text(fontRendererObj, value, boxX + 4, y + (h - 8) / 2, valueColor);
+        }
+    }
+
+    /** The box of a control: the theme's picture of the part (lit under the mouse), or its flat colors. */
+    private static void controlBox(int x0, int y0, int x1, int y1, boolean hovered, String part) {
+        boolean drawn = hovered ? Theme.sprite(x0, y0, x1, y1, part + ".hover", part, "button.hover", "button")
+            : Theme.sprite(x0, y0, x1, y1, part, "button");
+        if (!drawn) {
+            Theme.fill(x0, y0, x1, y1, hovered ? Theme.CONTROL_HOVER : Theme.CONTROL);
+            Theme.outline(x0, y0, x1, y1, hovered ? Theme.ACCENT : Theme.BORDER);
         }
     }
 

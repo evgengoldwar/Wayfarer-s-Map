@@ -497,7 +497,7 @@ public class GuiHelp extends ScaledScreen {
 
     @Override
     public void drawScaled(int mouseX, int mouseY, float partialTicks) {
-        Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
+        Theme.dimScreen(0, 0, width, height);
         Theme.panel(left, top, right, bottom);
         Theme.fill(left + 1, top + 1, left + SIDEBAR_WIDTH, bottom - 1, Theme.PANEL_ALT);
         Theme.fill(left + SIDEBAR_WIDTH, top + 1, left + SIDEBAR_WIDTH + 1, bottom - 1, Theme.BORDER);

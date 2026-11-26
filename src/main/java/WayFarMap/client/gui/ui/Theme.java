@@ -1,5 +1,9 @@
 package WayFarMap.client.gui.ui;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -31,6 +35,8 @@ public final class Theme {
     public static int TEXT_SOFT;
     /** A light shade of the accent, e.g. the second word of a title. */
     public static int ACCENT_SOFT;
+    /** Text of a tooltip. */
+    public static int TOOLTIP_TEXT;
     /** A well under the panel: lists, pictures, previews. */
     public static int DEEP;
     /** Cards of a list, lit by the mouse and picked. */
@@ -45,21 +51,33 @@ public final class Theme {
     public static boolean LIGHT;
     /** Panels and buttons have a raised edge (a light top and left, a dark bottom and right), like Minecraft's. */
     public static boolean BEVEL;
+    /** Window titles are drawn with a shadow: on dark themes, unless the theme says otherwise. */
+    public static boolean TITLE_SHADOW = true;
 
     /** The theme in use. */
     private static int current = -1;
     private static Palette palette;
+    /** The value of the setting the theme was last taken from, to see it changed. */
+    private static int lastSetting = -1;
+    /** Whether the themes were read from the resource packs and the CustomThemes folder yet. */
+    private static boolean loaded;
+
+    /** The themes that can be chosen: the built-in ones first (in {@link #NAMES}' order), then the added ones. */
+    private static List<Entry> ENTRIES = new ArrayList<>();
 
     /** One theme's colors; those not given are worked out from the others. */
     public static final class Palette {
 
-        public final int screenDim, panel, panelAlt, border, control, controlHover, controlDisabled, accent, accentDim,
+        /** The base colors: the others are worked out from them unless a theme gives them too. */
+        public int screenDim, panel, panelAlt, border, control, controlHover, controlDisabled, accent, accentDim,
             danger, success, text, textMuted, textDisabled, labelBg;
         public int header;
         int field, fieldText, buttonText, textBright, textSoft, accentSoft, deep, card, cardHover, cardHeader,
-            cardSelected, cardSelectedHover, sidebar, chosen, dangerDim, dangerDimHover, dangerStrong,
-            dangerStrongHover, rowHover;
+            cardSelected, cardSelectedHover, sidebar, section, chosen, dangerDim, dangerDimHover, dangerStrong,
+            dangerStrongHover, rowHover, tooltipText;
         public boolean light, bevel;
+        /** Text drawn with a shadow where the theme puts it on dark backgrounds (titles); null for the default. */
+        Boolean textShadow;
         /** The strip under a window's header: its colors, each this many pixels long; null for none. */
         int[] decor;
         int decorRun = 4;
@@ -85,8 +103,15 @@ public final class Theme {
             this.textMuted = textMuted;
             this.textDisabled = textDisabled;
             this.labelBg = labelBg;
-            int solid = panel | 0xFF000000;
             header = panelAlt;
+            derive();
+        }
+
+        private Palette() {}
+
+        /** Works the other colors out from the base ones (and {@link #light}), as a theme without them gets them. */
+        void derive() {
+            int solid = panel | 0xFF000000;
             field = light ? blend(solid, 0xFFFFFFFF, 0.6) : blend(solid, 0xFF000000, 0.3);
             fieldText = text;
             buttonText = text;
@@ -100,12 +125,32 @@ public final class Theme {
             cardSelected = blend(card, accentDim, 0.25);
             cardSelectedHover = blend(card, accentDim, 0.4);
             sidebar = light ? blend(solid, border, 0.25) : blend(solid, 0xFF000000, 0.17);
+            section = solid;
             chosen = blend(solid, accentDim, 0.45);
             dangerDim = blend(solid, danger, 0.2);
             dangerDimHover = blend(solid, danger, 0.32);
             dangerStrong = blend(solid, danger, 0.5);
             dangerStrongHover = blend(solid, danger, 0.65);
             rowHover = light ? 0x14000000 : 0x20FFFFFF;
+            tooltipText = text;
+        }
+
+        /** A copy, to change for a theme made from this one. */
+        Palette copy() {
+            Palette p = new Palette();
+            for (java.lang.reflect.Field f : Palette.class.getDeclaredFields()) {
+                if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
+                    continue;
+                }
+                try {
+                    f.setAccessible(true);
+                    Object value = f.get(this);
+                    f.set(p, value instanceof int[] ? ((int[]) value).clone() : value);
+                } catch (IllegalAccessException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+            return p;
         }
 
         Palette header(int header) {
@@ -118,6 +163,61 @@ public final class Theme {
             this.decorFlows = flows;
             this.decor = colors;
             return this;
+        }
+    }
+
+    /**
+     * The names of the colors a theme file can set ({@code "colors": {"panel": "#F0161A20"}}), the base ones first:
+     * setting one of those works out again the others the file doesn't set.
+     */
+    public static final String[] BASE_COLORS = { "screenDim", "panel", "panelAlt", "border", "control", "controlHover",
+        "controlDisabled", "accent", "accentDim", "danger", "success", "text", "textMuted", "textDisabled", "labelBg" };
+    public static final String[] DERIVED_COLORS = { "header", "field", "fieldText", "buttonText", "textBright",
+        "textSoft", "accentSoft", "deep", "card", "cardHover", "cardHeader", "cardSelected", "cardSelectedHover",
+        "sidebar", "section", "chosen", "dangerDim", "dangerDimHover", "dangerStrong", "dangerStrongHover", "rowHover",
+        "tooltipText" };
+
+    /** A theme of the list: built in, from a resource pack or from the CustomThemes folder. */
+    public static final class Entry {
+
+        /** Its name in the settings file and the folder's (lowercase). */
+        public final String id;
+        /** Its name shown, by language code ("" for any); null to take the translation of a built-in theme. */
+        Map<String, String> names;
+        Palette palette;
+        /** Its pictures, null for colors only. */
+        Skin skin;
+        /** Where it was read from, for the log and the settings; null for a built-in theme as it is. */
+        String origin;
+        /** Reads it again from its file (when it is chosen again, or its file changed); null for a built-in one. */
+        java.util.function.Supplier<Entry> reread;
+
+        Entry(String id, Palette palette) {
+            this.id = id;
+            this.palette = palette;
+        }
+
+        /** Its name in the mod's language. */
+        public String displayName() {
+            if (names != null) {
+                String name = names.get(WayFarMap.client.Lang.code());
+                if (name == null) {
+                    name = names.get("");
+                }
+                if (name == null) {
+                    name = names.get("en_US");
+                }
+                if (name == null && !names.isEmpty()) {
+                    name = names.values()
+                        .iterator()
+                        .next();
+                }
+                if (name != null) {
+                    return name;
+                }
+            }
+            String key = "wayfarmap.option.map.theme." + id;
+            return WayFarMap.client.Lang.has(key) ? WayFarMap.client.Lang.format(key) : id;
         }
     }
 
@@ -277,22 +377,85 @@ public final class Theme {
         vanilla.sidebar = 0xFFB4B4B4;
         vanilla.rowHover = 0x30FFFFFF;
         PALETTES[VANILLA] = vanilla;
+        for (int i = 0; i < NAMES.length; i++) {
+            ENTRIES.add(new Entry(NAMES[i], PALETTES[i]));
+        }
         apply(GRAPHITE);
+    }
+
+    /** How many themes can be chosen, the added ones included. */
+    public static int count() {
+        return ENTRIES.size();
+    }
+
+    /** The theme's name in the settings file. */
+    public static String id(int theme) {
+        return ENTRIES.get(clamp(theme)).id;
+    }
+
+    /** The theme's name as shown. */
+    public static String displayName(int theme) {
+        return ENTRIES.get(clamp(theme))
+            .displayName();
+    }
+
+    /** The theme by its name, -1 when there is none of that name. */
+    public static int indexOf(String id) {
+        if (id == null || id.isEmpty()) {
+            return -1;
+        }
+        for (int i = 0; i < ENTRIES.size(); i++) {
+            if (ENTRIES.get(i).id.equalsIgnoreCase(id)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** The themes as they are now: built in, then from the resource packs and the CustomThemes folder. */
+    static List<Entry> entries() {
+        return ENTRIES;
+    }
+
+    /** The built-in theme's colors as the mod has them, for themes made from it. */
+    static Palette builtIn(int theme) {
+        return PALETTES[theme];
+    }
+
+    private static int clamp(int theme) {
+        return Math.max(0, Math.min(ENTRIES.size() - 1, theme));
     }
 
     /** The colors of a theme, e.g. to show it before it is chosen. */
     public static Palette palette(int theme) {
-        return PALETTES[Math.max(0, Math.min(PALETTES.length - 1, theme))];
+        return ENTRIES.get(clamp(theme)).palette;
     }
 
     /** Switches every screen of the mod to the theme. */
     public static void apply(int theme) {
-        theme = Math.max(0, Math.min(PALETTES.length - 1, theme));
-        if (theme == current) {
+        apply(theme, false);
+    }
+
+    /**
+     * Switches every screen of the mod to the theme; {@code reread} reads its file and atlas again even if it is the
+     * one in use. A theme from a file is always read again when it is chosen, so a changed picture shows.
+     */
+    static void apply(int theme, boolean reread) {
+        theme = clamp(theme);
+        if (theme == current && !reread) {
             return;
         }
         current = theme;
-        Palette p = palette = PALETTES[theme];
+        Entry entry = ENTRIES.get(theme);
+        if (entry.reread != null) {
+            Entry fresh = entry.reread.get();
+            if (fresh != null) {
+                ENTRIES.set(theme, fresh);
+                entry = fresh;
+            }
+        }
+        Skin.activate(entry.skin);
+        Palette p = palette = entry.palette;
         SCREEN_DIM = p.screenDim;
         PANEL = p.panel;
         PANEL_ALT = p.panelAlt;
@@ -323,7 +486,8 @@ public final class Theme {
         CARD_SELECTED = p.cardSelected;
         CARD_SELECTED_HOVER = p.cardSelectedHover;
         SIDEBAR = p.sidebar;
-        SECTION = p.panel | 0xFF000000;
+        SECTION = p.section;
+        TOOLTIP_TEXT = p.tooltipText;
         CHOSEN = p.chosen;
         DANGER_DIM = p.dangerDim;
         DANGER_DIM_HOVER = p.dangerDimHover;
@@ -331,10 +495,51 @@ public final class Theme {
         DANGER_STRONG_HOVER = p.dangerStrongHover;
         LIGHT = p.light;
         BEVEL = p.bevel;
+        TITLE_SHADOW = p.textShadow != null ? p.textShadow : !p.light;
+    }
+
+    /**
+     * Reads the themes again (the resource packs were reloaded, a file of the CustomThemes folder changed) and takes
+     * the chosen one again, its atlas too. Render thread.
+     */
+    public static void reload() {
+        List<Entry> themes = ThemeLoader.load();
+        ENTRIES = themes;
+        loaded = true;
+        Config.setThemeChoices(ids());
+        int chosen = indexOf(Config.uiThemeName);
+        if (chosen < 0 && Config.uiThemeName.isEmpty()) {
+            // A settings file from before themes had names: the number is one of the built-in ones.
+            chosen = Math.max(0, Math.min(NAMES.length - 1, Config.uiTheme));
+        }
+        // A theme that is gone (its resource pack turned off) leaves graphite in use, and comes back with its pack.
+        Config.uiTheme = Math.max(0, chosen);
+        lastSetting = Config.uiTheme;
+        apply(Config.uiTheme, true);
+    }
+
+    private static String[] ids() {
+        String[] ids = new String[ENTRIES.size()];
+        for (int i = 0; i < ids.length; i++) {
+            ids[i] = ENTRIES.get(i).id;
+        }
+        return ids;
     }
 
     /** Takes the theme of the settings if it was changed: called before a screen of the mod is drawn. */
     public static void sync() {
+        if (!loaded) {
+            reload();
+        } else if (ThemeLoader.folderChanged()) {
+            // A theme of the CustomThemes folder was added, removed or saved: shown at once.
+            reload();
+        }
+        if (Config.uiTheme != lastSetting) {
+            // Chosen in the settings (or the welcome window): kept by its name, which stays when themes are added.
+            lastSetting = Config.uiTheme;
+            Config.uiThemeName = id(Config.uiTheme);
+            Config.save();
+        }
         apply(Config.uiTheme);
     }
 
@@ -352,7 +557,20 @@ public final class Theme {
     }
 
     public static void decor(Palette p, int x0, int y, int x1, int height) {
-        if (p.decor == null || x1 <= x0) {
+        if (x1 <= x0) {
+            return;
+        }
+        if (p == palette) {
+            Skin.Sprite sprite = Skin.get("decor");
+            if (sprite != null) {
+                // The picture repeated along, flowing like the lava when the theme's strip flows.
+                double shift = p.decorFlows ? System.currentTimeMillis() / 90.0 : 0;
+                int h = sprite.drawHeight > 0 ? sprite.drawHeight : height;
+                Skin.strip(sprite, x0, y, x1, y + h, shift);
+                return;
+            }
+        }
+        if (p.decor == null) {
             return;
         }
         int run = p.decorRun, count = p.decor.length;
@@ -368,10 +586,15 @@ public final class Theme {
 
     /** Whether the theme has a strip under the window headers. */
     public static boolean hasDecor() {
-        return palette.decor != null;
+        return palette.decor != null || Skin.get("decor") != null;
     }
 
     private Theme() {}
+
+    /** The width a sprite is drawn at across a thin part: its own (the "width" of the sprite), or the part's. */
+    static int spriteWidth(Skin.Sprite sprite, int fallback) {
+        return sprite.drawWidth > 0 ? sprite.drawWidth : fallback;
+    }
 
     public static void fill(int x0, int y0, int x1, int y1, int color) {
         Gui.drawRect(x0, y0, x1, y1, color);
@@ -385,8 +608,58 @@ public final class Theme {
         fill(x1 - 1, y0 + 1, x1, y1 - 1, color);
     }
 
+    /**
+     * Draws the theme's picture of the part over the rectangle, the first of the names it has (a state, then the part
+     * itself); false when it has none of them, and the part is drawn in its colors.
+     */
+    public static boolean sprite(int x0, int y0, int x1, int y1, String... names) {
+        Skin.Sprite sprite = Skin.first(names);
+        if (sprite == null) {
+            return false;
+        }
+        Skin.draw(sprite, x0, y0, x1, y1, 0xFFFFFFFF, 1);
+        return true;
+    }
+
+    /** The shade over everything behind a window (the game, the map). */
+    public static void dimScreen(int x0, int y0, int x1, int y1) {
+        if (!sprite(x0, y0, x1, y1, "screen")) {
+            fill(x0, y0, x1, y1, SCREEN_DIM);
+        }
+    }
+
+    /** A tooltip's box: a shadow, a dark well and a border, or the theme's picture of it. */
+    public static void tooltip(int x0, int y0, int x1, int y1) {
+        if (sprite(x0, y0, x1, y1, "tooltip")) {
+            return;
+        }
+        fill(x0 + 1, y0 + 1, x1 + 1, y1 + 1, 0x60000000);
+        fill(x0, y0, x1, y1, alpha(DEEP, 0xF0));
+        outline(x0, y0, x1, y1, BORDER);
+    }
+
+    /** The box of a label on the map (the name under the mouse, a coordinate). */
+    public static void label(int x0, int y0, int x1, int y1) {
+        if (!sprite(x0, y0, x1, y1, "label")) {
+            fill(x0, y0, x1, y1, LABEL_BG);
+        }
+    }
+
+    /** An open list under its button (a dropdown): its shadow, background and border. */
+    public static void dropdown(int x0, int y0, int x1, int y1) {
+        if (sprite(x0 - 1, y0 - 1, x1 + 1, y1 + 1, "dropdown")) {
+            return;
+        }
+        fill(x0 + 2, y0 + 2, x1 + 2, y1 + 2, 0x60000000);
+        fill(x0, y0, x1, y1, PANEL | 0xFF000000);
+        outline(x0 - 1, y0 - 1, x1 + 1, y1 + 1, BORDER);
+    }
+
     /** Panel with a thin border; with a raised edge inside it on a theme like Minecraft's. */
     public static void panel(int x0, int y0, int x1, int y1) {
+        if (sprite(x0, y0, x1, y1, "panel")) {
+            return;
+        }
         fill(x0, y0, x1, y1, PANEL);
         if (BEVEL) {
             outline(x0, y0, x1, y1, 0xFF000000);
@@ -484,7 +757,20 @@ public final class Theme {
         int track = y1 - y0;
         int bar = Math.max(12, track * visible / Math.max(visible, total));
         int barY = y0 + (int) Math.round((track - bar) * Math.max(0, Math.min(1, position)));
-        fill(x, y0, x + 2, y1, CONTROL);
-        fill(x, barY, x + 2, barY + bar, lit ? ACCENT : BORDER);
+        Skin.Sprite trackSprite = Skin.get("scrollbar.track");
+        Skin.Sprite thumb = lit ? Skin.first("scrollbar.thumb.hover", "scrollbar.thumb") : Skin.get("scrollbar.thumb");
+        // A picture of the bar may be wider than the 2 pixels of the flat one: centered on it.
+        if (trackSprite != null) {
+            int w = spriteWidth(trackSprite, 2);
+            Skin.draw(trackSprite, x + 1 - w / 2.0, y0, x + 1 + w / 2.0, y1, 0xFFFFFFFF, 1);
+        } else {
+            fill(x, y0, x + 2, y1, CONTROL);
+        }
+        if (thumb != null) {
+            int w = spriteWidth(thumb, 2);
+            Skin.draw(thumb, x + 1 - w / 2.0, barY, x + 1 + w / 2.0, barY + bar, 0xFFFFFFFF, 1);
+        } else {
+            fill(x, barY, x + 2, barY + bar, lit ? ACCENT : BORDER);
+        }
     }
 }

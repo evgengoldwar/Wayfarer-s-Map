@@ -1022,7 +1022,7 @@ public class GuiWaypointList extends ScaledScreen {
             // Teammates' waypoints came or went meanwhile.
             rebuildRows();
         }
-        Theme.fill(0, 0, width, height, Theme.SCREEN_DIM);
+        Theme.dimScreen(0, 0, width, height);
         // A soft shadow around the window.
         Theme.fill(panelLeft - 2, panelTop + 2, panelRight + 2, panelBottom + 2, 0x30000000);
         Theme.fill(panelLeft - 1, panelTop + 1, panelRight + 1, panelBottom + 1, 0x50000000);
@@ -1816,9 +1816,11 @@ public class GuiWaypointList extends ScaledScreen {
         int w = Math.max(fontRendererObj.getStringWidth(name), whereWidth) + 26;
         int h = where == null ? 16 : 26;
         int x = mouseX + 8, y = mouseY - 8;
-        Theme.fill(x + 2, y + 2, x + w + 2, y + h + 2, 0x60000000);
-        Theme.fill(x, y, x + w, y + h, Theme.PANEL_ALT | 0xFF000000);
-        Theme.outline(x, y, x + w, y + h, Theme.ACCENT);
+        if (!Theme.sprite(x, y, x + w, y + h, "drag")) {
+            Theme.fill(x + 2, y + 2, x + w + 2, y + h + 2, 0x60000000);
+            Theme.fill(x, y, x + w, y + h, Theme.PANEL_ALT | 0xFF000000);
+            Theme.outline(x, y, x + w, y + h, Theme.ACCENT);
+        }
         Theme.fill(x, y, x + 2, y + h, waypointColor(pressedWaypoint));
         WaypointRenderer.drawMapMarker(pressedWaypoint, x + 11, y + 8, 9f, false);
         GL11.glDisable(GL11.GL_LIGHTING);
@@ -1834,10 +1836,8 @@ public class GuiWaypointList extends ScaledScreen {
         if (y < 2) {
             y = mouseY + 14;
         }
-        Theme.fill(x + 1, y + 1, x + w + 1, y + 13, 0x60000000);
-        Theme.fill(x, y, x + w, y + 12, Theme.alpha(Theme.DEEP, 0xF0));
-        Theme.outline(x, y, x + w, y + 12, Theme.BORDER);
-        Theme.text(fontRendererObj, text, x + 4, y + 2, Theme.TEXT);
+        Theme.tooltip(x, y, x + w, y + 12);
+        Theme.text(fontRendererObj, text, x + 4, y + 2, Theme.TOOLTIP_TEXT);
     }
 
     /** The open list of dimensions under its button, over everything; the one shown is marked. */
@@ -1847,9 +1847,7 @@ public class GuiWaypointList extends ScaledScreen {
         int y0 = dimensionButton.yPosition + 17;
         int shown = Math.min(CHOICES_SHOWN, choices.size());
         int y1 = y0 + shown * CHOICE_ROW;
-        Theme.fill(x0 + 2, y0 + 2, x1 + 2, y1 + 2, 0x60000000);
-        Theme.fill(x0, y0, x1, y1, Theme.PANEL | 0xFF000000);
-        Theme.outline(x0 - 1, y0 - 1, x1 + 1, y1 + 1, Theme.BORDER);
+        Theme.dropdown(x0, y0, x1, y1);
         int current = shownDimension(), hovered = choiceAt(mouseX, mouseY);
         int own = mc.theWorld != null ? mc.theWorld.provider.dimensionId : ALL;
         for (int line = 0; line < shown; line++) {

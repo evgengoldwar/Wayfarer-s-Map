@@ -1,11 +1,16 @@
 package WayFarMap.client.gui.ui;
 
+import java.util.List;
+
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.RenderHelper;
 
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 import WayFarMap.Config;
 
@@ -188,7 +193,7 @@ public abstract class ScaledScreen extends GuiScreen {
         GL11.glScalef(scale, scale, 1f);
         if (offset > 0) {
             // The strip the screen leaves at the top while lower down is dimmed like the rest.
-            Theme.fill(0, 0, width, offset, Theme.SCREEN_DIM);
+            Theme.dimScreen(0, 0, width, offset);
             GL11.glTranslatef(0f, offset, 0f);
         }
         activeFactor = appliedFactor;
@@ -205,5 +210,46 @@ public abstract class ScaledScreen extends GuiScreen {
     /** Draws the screen in its own GUI pixels; the default draws the buttons. */
     public void drawScaled(int mouseX, int mouseY, float partialTicks) {
         super.drawScreen(mouseX, mouseY, partialTicks);
+    }
+
+    /**
+     * Minecraft's tooltip, in the theme's picture of a tooltip when it has one (Minecraft's own purple box
+     * otherwise), with the theme's tooltip text color for lines without a color of their own.
+     */
+    @Override
+    @SuppressWarnings("rawtypes")
+    protected void drawHoveringText(List lines, int mouseX, int mouseY, FontRenderer font) {
+        if (lines == null || lines.isEmpty() || Skin.get("tooltip") == null) {
+            super.drawHoveringText(lines, mouseX, mouseY, font);
+            return;
+        }
+        GL11.glDisable(GL12.GL_RESCALE_NORMAL);
+        RenderHelper.disableStandardItemLighting();
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        int textWidth = 0;
+        for (Object line : lines) {
+            textWidth = Math.max(textWidth, font.getStringWidth(String.valueOf(line)));
+        }
+        int x = mouseX + 12, y = mouseY - 12;
+        int textHeight = 8 + (lines.size() > 1 ? 2 + (lines.size() - 1) * 10 : 0);
+        if (x + textWidth > width) {
+            x -= 28 + textWidth;
+        }
+        if (y + textHeight + 6 > height) {
+            y = height - textHeight - 6;
+        }
+        GL11.glPushMatrix();
+        GL11.glTranslatef(0, 0, 300);
+        Theme.sprite(x - 4, y - 4, x + textWidth + 4, y + textHeight + 4, "tooltip");
+        for (int i = 0; i < lines.size(); i++) {
+            font.drawStringWithShadow(String.valueOf(lines.get(i)), x, y, Theme.TOOLTIP_TEXT);
+            y += i == 0 ? 12 : 10;
+        }
+        GL11.glPopMatrix();
+        GL11.glEnable(GL11.GL_LIGHTING);
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        RenderHelper.enableStandardItemLighting();
+        GL11.glEnable(GL12.GL_RESCALE_NORMAL);
     }
 }

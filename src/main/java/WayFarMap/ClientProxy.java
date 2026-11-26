@@ -16,6 +16,7 @@ import WayFarMap.client.PerfTicks;
 import WayFarMap.client.PlayerTrail;
 import WayFarMap.client.Teleport;
 import WayFarMap.client.WorldCleanup;
+import WayFarMap.client.gui.ui.Theme;
 import WayFarMap.client.integration.ChargersLayer;
 import WayFarMap.client.integration.ClaimsLayer;
 import WayFarMap.client.integration.DronesLayer;
@@ -60,6 +61,9 @@ public class ClientProxy extends CommonProxy {
             ((IReloadableResourceManager) resourceManager).registerReloadListener(manager);
             // Resource packs can change the mod's translations.
             ((IReloadableResourceManager) resourceManager).registerReloadListener(reloaded -> Lang.reload());
+            // Resource packs can add themes and change the built-in ones (their colors and pictures); the
+            // CustomThemes folder is read with them.
+            ((IReloadableResourceManager) resourceManager).registerReloadListener(reloaded -> Theme.reload());
         }
 
         FMLCommonHandler.instance()
