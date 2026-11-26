@@ -44,9 +44,17 @@ public final class MobMapIcons {
     }
 
     private static Optional<Icon> read(Class<?> kind) {
-        String key = MobIconDump.mobKey(kind)
+        String key = MobIconDump.mobKey(kind);
+        int slash = key.indexOf('/');
+        // Registry IDs can contain spaces, colons and other characters that are unsafe in resource paths.
+        String mod = MobIconDump.safe(key.substring(0, slash));
+        String name = MobIconDump.safe(key.substring(slash + 1));
+        if (".".equals(mod) || "..".equals(mod)) {
+            return Optional.empty();
+        }
+        String path = ("textures/mob_icons/" + mod + "/" + name + ".png")
             .toLowerCase(Locale.ROOT);
-        ResourceLocation png = new ResourceLocation("wayfarmap", "textures/mob_icons/" + key + ".png");
+        ResourceLocation png = new ResourceLocation("wayfarmap", path);
         try (InputStream in = Minecraft.getMinecraft()
             .getResourceManager()
             .getResource(png)
