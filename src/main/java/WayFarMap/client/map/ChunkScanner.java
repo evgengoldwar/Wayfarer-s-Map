@@ -85,9 +85,11 @@ public final class ChunkScanner {
                     int plantlessRgb = plantlessRegion == null ? 0
                         : detailedColor(world, chunk, heights, lx, y, lz, blockRgb, false);
                     if (caveLayer >= 0) {
-                        // Deeper floors (below the layer) get darker, so drops read as depth.
+                        // Deeper floors (below the layer) get darker, so drops read as depth; a cut through blocks
+                        // filling the whole layer (a machine standing on the floor, a hill) is darker still.
                         int below = Math.max(0, caveLayer * 16 - y);
-                        float depth = Math.max(0.4f, 1.0f - below * 0.02f);
+                        float depth = isCut(chunk, lx, y, lz, caveLayer) ? CUT_SHADE
+                            : Math.max(0.4f, 1.0f - below * 0.02f);
                         rgb = BlockColors.shade(rgb, depth);
                         plantlessRgb = BlockColors.shade(plantlessRgb, depth);
                     }
@@ -313,10 +315,19 @@ public final class ChunkScanner {
         return caveLayer >= 0 ? findCaveFloor(chunk, lx, lz, caveLayer) : findSurface(chunk, lx, lz, noSky);
     }
 
+    /** How bright a cut through the top of a cave layer is drawn: solid there, so nothing to stand on. */
+    private static final float CUT_SHADE = 0.45f;
+
+    /** Whether {@code y} is a cut through the top of the cave layer (see {@link #findCaveFloor}). */
+    private static boolean isCut(Chunk chunk, int lx, int y, int lz, int layer) {
+        return y == Math.min(255, layer * 16 + 15) && isSolid(chunk.getBlock(lx, y, lz));
+    }
+
     /**
      * Floor of the open space in the cave layer: rock at the top of the layer is skipped, then the first block below
-     * the open space is the floor, however far down it is (big caverns, the Nether's lava sea), like JourneyMap. Solid
-     * rock gives {@link #NO_BLOCK}.
+     * the open space is the floor, however far down it is (big caverns, the Nether's lava sea), like JourneyMap. A
+     * column solid all through the layer gives its block at the top of the layer, drawn darker as a cut: machines
+     * standing on the floor of a base reach up through the layer's top, and were holes in the map.
      */
     private static int findCaveFloor(Chunk chunk, int lx, int lz, int layer) {
         int layerBottom = layer * 16;
@@ -325,7 +336,7 @@ public final class ChunkScanner {
             y--;
         }
         if (y < layerBottom) {
-            return NO_BLOCK;
+            return Math.min(255, layerBottom + 15);
         }
         for (; y >= 0; y--) {
             if (isVisible(chunk.getBlock(lx, y, lz))) {

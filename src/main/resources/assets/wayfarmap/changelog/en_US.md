@@ -18,6 +18,9 @@
 
 # 0.0.26
 
+## Caves
+- [fix] Machines and other blocks standing on the floor of a base no longer show as holes in cave mode: a column solid all through the cave layer is drawn as a darker cut at the layer's top instead of left empty
+
 ## Opis
 - [new] Chunk update times (Opis): the 100 slowest chunks of the dimension in the last Opis run, from blue to red; hover a chunk for its time per tick, tile entities and entities
 - [new] Loaded chunks (Opis): the chunks the server has loaded, green, and those kept loaded by chunk loaders, blue
