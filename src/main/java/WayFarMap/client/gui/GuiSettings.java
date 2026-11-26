@@ -30,6 +30,7 @@ import WayFarMap.client.gui.ui.ScaledScreen;
 import WayFarMap.client.gui.ui.Skin;
 import WayFarMap.client.gui.ui.Theme;
 import WayFarMap.client.map.BlockColors;
+import WayFarMap.client.map.MapManager;
 
 /**
  * All mod settings: categories in a sidebar, the options of the selected one on the right and the description of the
@@ -86,6 +87,7 @@ public class GuiSettings extends ScaledScreen {
 
     private final GuiScreen parent;
     private final boolean textureColorsBefore = Config.useTextureColors;
+    private final int caveSolidBefore = Config.caveSolid;
 
     private int left, top, right, bottom;
     private int contentLeft, contentTop, contentBottom;
@@ -682,6 +684,10 @@ public class GuiSettings extends ScaledScreen {
         if (Config.useTextureColors != textureColorsBefore) {
             // Chunks are rescanned over time and pick up the new colors.
             BlockColors.clearCache();
+        }
+        if (Config.caveSolid != caveSolidBefore) {
+            // The cave layer around the player is drawn again at once; the rest as it is rescanned.
+            MapManager.INSTANCE.rescanCaves();
         }
     }
 

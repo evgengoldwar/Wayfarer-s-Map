@@ -19,7 +19,7 @@
 # 0.0.26
 
 ## Caves
-- [fix] Machines and other blocks standing on the floor of a base no longer show as holes in cave mode: a column solid all through the cave layer is drawn as a darker cut at the layer's top instead of left empty
+- [new] Solid rock in caves: settings → 2D map → Solid rock in caves. Black as before, or a cut at the layer's top (in the blocks' colors or in gray), so machines and other blocks standing on the floor of a base are no longer holes in cave mode
 
 ## Opis
 - [new] Chunk update times (Opis): the 100 slowest chunks of the dimension in the last Opis run, from blue to red; hover a chunk for its time per tick, tile entities and entities

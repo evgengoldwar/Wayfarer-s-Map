@@ -139,6 +139,11 @@ public class MapManager implements IResourceManagerReloadListener {
         return biomes;
     }
 
+    /** Maps the loaded chunks of the cave layer shown again at once: how solid rock is drawn was changed. */
+    public void rescanCaves() {
+        caveTracker.reset();
+    }
+
     /** Pins the cave view to a layer (0-15), or -1 to follow the player's height. */
     public void setCaveLayerOverride(int layer) {
         caveLayerOverride = layer < 0 ? -1 : Math.min(15, layer);

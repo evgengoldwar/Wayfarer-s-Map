@@ -83,6 +83,8 @@ public class Config {
 
     public static final int LIGHT_AUTO = 0, LIGHT_DAY = 1, LIGHT_NIGHT = 2;
     public static final int CAVES_AUTO = 0, CAVES_OFF = 1, CAVES_ON = 2;
+    /** How a column solid all through a cave layer is drawn: left empty, a cut in its block's colors, a gray cut. */
+    public static final int CAVE_SOLID_BLACK = 0, CAVE_SOLID_CUT = 1, CAVE_SOLID_GRAY = 2;
     public static final int DISPLAY_BLOCKS = 0, DISPLAY_BIOMES = 1, DISPLAY_TOPO = 2;
 
     public static boolean minimapEnabled = true;
@@ -147,6 +149,8 @@ public class Config {
     public static int mapLightMode = LIGHT_AUTO;
     /** Cave view: {@link #CAVES_AUTO} switches to it while underground. */
     public static int caveMode = CAVES_AUTO;
+    /** How solid rock (and blocks filling a whole cave layer) is drawn in cave view: {@link #CAVE_SOLID_BLACK}... */
+    public static int caveSolid = CAVE_SOLID_BLACK;
     /** Surface drawn with block colors, biome colors or colored by height (topography). */
     public static int mapDisplayMode = DISPLAY_BLOCKS;
     /** Contour lines on the topography, every so many blocks of height. */
@@ -771,6 +775,16 @@ public class Config {
             new String[] { "auto", "off", "on" },
             () -> caveMode,
             v -> caveMode = v);
+        choice(
+            c,
+            "caveSolid",
+            "Cave view, where the cave layer is solid all through (rock, a machine standing on the floor of a base): "
+                + "0 = black (nothing drawn), 1 = a cut at the top of the layer in the blocks' colors, darker, "
+                + "2 = the same cut in gray. Applies as chunks are rescanned.",
+            CAVE_SOLID_BLACK,
+            new String[] { "black", "cut", "gray" },
+            () -> caveSolid,
+            v -> caveSolid = v);
         integer(
             c,
             "layerFadeMs",

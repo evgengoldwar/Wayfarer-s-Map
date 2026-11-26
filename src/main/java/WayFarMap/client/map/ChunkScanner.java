@@ -81,6 +81,12 @@ public final class ChunkScanner {
                 }
                 if (y != NO_BLOCK) {
                     int blockRgb = columnColor(world, chunk, lx, y, lz);
+                    boolean cut = caveLayer >= 0 && isCut(chunk, lx, y, lz, caveLayer);
+                    if (cut && Config.caveSolid == Config.CAVE_SOLID_GRAY) {
+                        // A gray cut: rock reads as an even dark ground the caves stand out on, ores and gravel
+                        // don't speckle it, and machines still show as shapes.
+                        blockRgb = grayCut(blockRgb);
+                    }
                     int rgb = detailedColor(world, chunk, heights, lx, y, lz, blockRgb, true);
                     int plantlessRgb = plantlessRegion == null ? 0
                         : detailedColor(world, chunk, heights, lx, y, lz, blockRgb, false);
@@ -88,7 +94,7 @@ public final class ChunkScanner {
                         // Deeper floors (below the layer) get darker, so drops read as depth; a cut through blocks
                         // filling the whole layer (a machine standing on the floor, a hill) is darker still.
                         int below = Math.max(0, caveLayer * 16 - y);
-                        float depth = isCut(chunk, lx, y, lz, caveLayer) ? CUT_SHADE
+                        float depth = cut ? Config.caveSolid == Config.CAVE_SOLID_GRAY ? 1f : CUT_SHADE
                             : Math.max(0.4f, 1.0f - below * 0.02f);
                         rgb = BlockColors.shade(rgb, depth);
                         plantlessRgb = BlockColors.shade(plantlessRgb, depth);
@@ -318,6 +324,17 @@ public final class ChunkScanner {
     /** How bright a cut through the top of a cave layer is drawn: solid there, so nothing to stand on. */
     private static final float CUT_SHADE = 0.45f;
 
+    /** The darkest and lightest gray of a gray cut: a narrow, dark range, so it stays a background. */
+    private static final int GRAY_CUT_MIN = 0x2A, GRAY_CUT_MAX = 0x4A;
+
+    /** The color's brightness as a gray in the narrow range of a gray cut. */
+    private static int grayCut(int rgb) {
+        int r = rgb >> 16 & 0xFF, g = rgb >> 8 & 0xFF, b = rgb & 0xFF;
+        int luma = (r * 299 + g * 587 + b * 114) / 1000;
+        int v = GRAY_CUT_MIN + luma * (GRAY_CUT_MAX - GRAY_CUT_MIN) / 255;
+        return v << 16 | v << 8 | v;
+    }
+
     /** Whether {@code y} is a cut through the top of the cave layer (see {@link #findCaveFloor}). */
     private static boolean isCut(Chunk chunk, int lx, int y, int lz, int layer) {
         return y == Math.min(255, layer * 16 + 15) && isSolid(chunk.getBlock(lx, y, lz));
@@ -326,8 +343,9 @@ public final class ChunkScanner {
     /**
      * Floor of the open space in the cave layer: rock at the top of the layer is skipped, then the first block below
      * the open space is the floor, however far down it is (big caverns, the Nether's lava sea), like JourneyMap. A
-     * column solid all through the layer gives its block at the top of the layer, drawn darker as a cut: machines
-     * standing on the floor of a base reach up through the layer's top, and were holes in the map.
+     * column solid all through the layer gives {@link #NO_BLOCK} (drawn black), or with {@link Config#caveSolid} its
+     * block at the top of the layer, drawn as a cut: machines standing on the floor of a base reach up through the
+     * layer's top, and are holes in the map otherwise.
      */
     private static int findCaveFloor(Chunk chunk, int lx, int lz, int layer) {
         int layerBottom = layer * 16;
@@ -336,7 +354,7 @@ public final class ChunkScanner {
             y--;
         }
         if (y < layerBottom) {
-            return Math.min(255, layerBottom + 15);
+            return Config.caveSolid == Config.CAVE_SOLID_BLACK ? NO_BLOCK : Math.min(255, layerBottom + 15);
         }
         for (; y >= 0; y--) {
             if (isVisible(chunk.getBlock(lx, y, lz))) {
