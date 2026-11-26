@@ -12,6 +12,7 @@ import WayFarMap.client.KeyHandler;
 import WayFarMap.client.Lang;
 import WayFarMap.client.MinimapRenderer;
 import WayFarMap.client.MobIconDump;
+import WayFarMap.client.MobTextureDump;
 import WayFarMap.client.PerfTicks;
 import WayFarMap.client.PlayerTrail;
 import WayFarMap.client.Teleport;
@@ -135,6 +136,7 @@ public class ClientProxy extends CommonProxy {
         ClientCommandHandler.instance.registerCommand(new InspectCommand());
         // Material to make the map's mob icons from: every mob drawn by the game, its skin and model.
         ClientCommandHandler.instance.registerCommand(new MobIconDump());
+        ClientCommandHandler.instance.registerCommand(new MobTextureDump());
 
         MinecraftForge.EVENT_BUS.register(new IsoEntityDrawer.NameTags());
         MinecraftForge.EVENT_BUS.register(new MinimapRenderer());

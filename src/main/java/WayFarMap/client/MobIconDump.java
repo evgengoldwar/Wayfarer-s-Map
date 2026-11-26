@@ -202,6 +202,11 @@ public final class MobIconDump extends CommandBase {
             }
             findReflection();
             Map<String, Class<?>> kinds = kinds();
+            // Bosses put up their health bar when drawn: the one there was (or none) is put back.
+            String bossName = net.minecraft.entity.boss.BossStatus.bossName;
+            float bossHealth = net.minecraft.entity.boss.BossStatus.healthScale;
+            int bossTime = net.minecraft.entity.boss.BossStatus.statusBarTime;
+            boolean bossColor = net.minecraft.entity.boss.BossStatus.hasColorModifier;
             try {
                 framebuffer = new Framebuffer(SIZE, SIZE, true);
                 readBuffer = BufferUtils.createIntBuffer(SIZE * SIZE);
@@ -224,6 +229,10 @@ public final class MobIconDump extends CommandBase {
                 if (game != null) {
                     game.bindFramebuffer(true);
                 }
+                net.minecraft.entity.boss.BossStatus.bossName = bossName;
+                net.minecraft.entity.boss.BossStatus.healthScale = bossHealth;
+                net.minecraft.entity.boss.BossStatus.statusBarTime = bossTime;
+                net.minecraft.entity.boss.BossStatus.hasColorModifier = bossColor;
             }
             List<Map<String, Object>> infos = new ArrayList<>();
             for (Mob mob : done) {
@@ -247,27 +256,7 @@ public final class MobIconDump extends CommandBase {
          * matching the filter if there is one.
          */
         private Map<String, Class<?>> kinds() {
-            Map<String, Class<?>> kinds = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) EntityList.classToStringMapping).entrySet()) {
-                if (entry.getKey() instanceof Class && entry.getValue() instanceof String
-                    && isMob((Class<?>) entry.getKey())) {
-                    Class<?> kind = (Class<?>) entry.getKey();
-                    kinds.put(modOf(kind, (String) entry.getValue()) + "/" + entry.getValue(), kind);
-                }
-            }
-            for (Object key : ((Map<?, ?>) RenderManager.instance.entityRenderMap).keySet()) {
-                if (key instanceof Class && isMob((Class<?>) key) && !kinds.containsValue(key)) {
-                    Class<?> kind = (Class<?>) key;
-                    kinds.put(modOf(kind, null) + "/" + kind.getSimpleName(), kind);
-                }
-            }
-            if (filter != null) {
-                kinds.keySet()
-                    .removeIf(
-                        key -> !key.toLowerCase(Locale.ROOT)
-                            .contains(filter));
-            }
-            return kinds;
+            return mobKinds(filter);
         }
 
         private Mob dumpMob(String key, Class<?> kind) {
@@ -998,14 +987,14 @@ public final class MobIconDump extends CommandBase {
         boolean draw() throws Exception;
     }
 
-    private static boolean isMob(Class<?> kind) {
+    static boolean isMob(Class<?> kind) {
         return EntityLivingBase.class.isAssignableFrom(kind) && !EntityPlayer.class.isAssignableFrom(kind)
             && !Modifier.isAbstract(kind.getModifiers());
     }
 
     /** The mod that added the mob: from Forge's list, else the "mod.Name" prefix of its name, else the game. */
     @SuppressWarnings("unchecked")
-    private static String modOf(Class<?> kind, String name) {
+    static String modOf(Class<?> kind, String name) {
         try {
             EntityRegistry.EntityRegistration registration = EntityRegistry.instance()
                 .lookupModSpawn((Class<? extends Entity>) kind, false);
@@ -1024,14 +1013,14 @@ public final class MobIconDump extends CommandBase {
     }
 
     /** A mob made for its pictures only (not put in the world). */
-    private static Entity create(Class<?> kind) throws ReflectiveOperationException {
+    static Entity create(Class<?> kind) throws ReflectiveOperationException {
         Constructor<?> constructor = kind.getDeclaredConstructor(World.class);
         constructor.setAccessible(true);
         return (Entity) constructor.newInstance(Minecraft.getMinecraft().theWorld);
     }
 
     /** The members needed, found by their types so it works with any names. */
-    private static void findReflection() throws NoSuchMethodException {
+    static void findReflection() throws NoSuchMethodException {
         if (textureMethod != null) {
             return;
         }
@@ -1075,7 +1064,7 @@ public final class MobIconDump extends CommandBase {
         }
     }
 
-    private static ResourceLocation texture(Render render, Entity entity) {
+    static ResourceLocation texture(Render render, Entity entity) {
         try {
             return (ResourceLocation) textureMethod.invoke(render, entity);
         } catch (Throwable t) {
@@ -1083,8 +1072,36 @@ public final class MobIconDump extends CommandBase {
         }
     }
 
+    /**
+     * Living mobs by "mod/name": the named ones, then those with a renderer but no name. Not players; only those whose
+     * "mod/name" contains the filter (lowercase) if there is one.
+     */
+    static Map<String, Class<?>> mobKinds(String filter) {
+        Map<String, Class<?>> kinds = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (Map.Entry<?, ?> entry : ((Map<?, ?>) EntityList.classToStringMapping).entrySet()) {
+            if (entry.getKey() instanceof Class && entry.getValue() instanceof String
+                && isMob((Class<?>) entry.getKey())) {
+                Class<?> kind = (Class<?>) entry.getKey();
+                kinds.put(modOf(kind, (String) entry.getValue()) + "/" + entry.getValue(), kind);
+            }
+        }
+        for (Object key : ((Map<?, ?>) RenderManager.instance.entityRenderMap).keySet()) {
+            if (key instanceof Class && isMob((Class<?>) key) && !kinds.containsValue(key)) {
+                Class<?> kind = (Class<?>) key;
+                kinds.put(modOf(kind, null) + "/" + kind.getSimpleName(), kind);
+            }
+        }
+        if (filter != null) {
+            kinds.keySet()
+                .removeIf(
+                    key -> !key.toLowerCase(Locale.ROOT)
+                        .contains(filter));
+        }
+        return kinds;
+    }
+
     /** A file name made of safe letters only. */
-    private static String safe(String name) {
+    static String safe(String name) {
         return name.replaceAll("[^A-Za-z0-9._-]", "_");
     }
 }

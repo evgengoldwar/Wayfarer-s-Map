@@ -18,6 +18,10 @@
 
 # 0.0.26
 
+## Tools
+- [new] `/wfmobtextures [filter]`: saves the textures of every mob (vanilla and mods) into wayfarmap/dumps/mob-textures-<date>/ with a zip of it next to the folder: the main texture, the layers drawn (wool, eyes), the files of layered textures (horse coats) and the variants of the mob's folder (villager professions, cat types, horse armor), at their resource paths, so the folder is a resource pack to start from; mobs.txt and mobs.json say which mob has which
+- [fix] `/wfmobicons` no longer leaves a boss health bar on the screen
+
 ## Biomes
 - [fix] Biome view: biomes with ids above 254 (packs that extend biome ids, like EndlessIDs) are named under the cursor and found by the biome search; places mapped before show them once mapped again
 
