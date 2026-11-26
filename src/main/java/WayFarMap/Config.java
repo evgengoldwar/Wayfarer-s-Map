@@ -286,9 +286,9 @@ public class Config {
     public static boolean showOtherEntities = true;
     /** Tamed mobs (blue). */
     public static boolean showPets = true;
-    /** Width of the colored frame around mob icons, in GUI pixels. */
+    /** Width of the colored outline along mob icons, in screen pixels. */
     public static int mobFrameWidth = 1;
-    /** How opaque the frame around mob icons is, in percent, and the icons' size, in percent of the usual. */
+    /** Outline opacity and icon size, in percent. */
     public static int mobFrameOpacity = 100, mobIconScale = 100;
     /** A small arrow at the mob's icon pointing where it looks. */
     public static boolean mobFacing = true;
@@ -1395,19 +1395,19 @@ public class Config {
         integer(
             c,
             "frameWidth",
-            "Width of the colored frame around mob icons that tells what kind of mob it is, in pixels; 0 = none.",
+            "Width of the colored outline along mob icons, in screen pixels. 0 turns the outline off.",
             1,
             0,
             3,
             1,
             () -> mobFrameWidth,
             v -> mobFrameWidth = v);
-        // Only with a frame to make see-through.
+        // Only with a visible outline.
         when(() -> mobFrameWidth > 0);
         integer(
             c,
             "frameOpacity",
-            "How opaque the colored frame around mob icons is, in percent.",
+            "How opaque the colored outline along mob icons is, in percent.",
             100,
             10,
             100,

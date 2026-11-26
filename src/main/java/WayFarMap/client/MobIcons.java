@@ -66,12 +66,13 @@ public final class MobIcons {
     private static final int FRAMEBUFFER_BINDING = 0x8CA6;
 
     /** Textures of the icons by {@link #key}. */
-    private static final Map<String, Integer> ICONS = new LinkedHashMap<String, Integer>(64, 0.75f, true) {
+    private static final Map<String, Icon> ICONS = new LinkedHashMap<String, Icon>(64, 0.75f, true) {
 
         @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Integer> eldest) {
+        protected boolean removeEldestEntry(Map.Entry<String, Icon> eldest) {
             if (size() > MAX_ICONS) {
-                GlTextures.delete(eldest.getValue());
+                eldest.getValue()
+                    .release();
                 return true;
             }
             return false;
@@ -97,10 +98,12 @@ public final class MobIcons {
      * until icons were drawn in another one, and their textures until then too.
      */
     public static void reset() {
-        for (int old : ICONS.values()) {
-            GlTextures.delete(old);
+        for (Icon old : ICONS.values()) {
+            old.release();
         }
         ICONS.clear();
+        MobIconOutline.clear();
+        EntityIcons.resetOutlines();
         FAILED.clear();
         iconWorld = null;
     }
@@ -110,23 +113,26 @@ public final class MobIcons {
      *
      * @return false if it has none (yet), so the caller can draw something else
      */
-    public static boolean draw(EntityLivingBase entity, double sx, double sy, float size, float alpha) {
-        if (entity == null) {
-            return false;
-        }
-        Integer icon = MobMapIcons.texture(entity.getClass());
+    static boolean draw(EntityLivingBase entity, double sx, double sy, float size, float alpha, double pixel,
+        int outlineWidth, int outlineColor) {
+        Icon icon = MobMapIcons.icon(entity.getClass());
         if (icon == null) {
             icon = icon(entity);
         }
         if (icon == null) {
             return false;
         }
-        double half = size / 2.0;
+        icon.outline.draw(sx, sy, size, pixel, outlineWidth, outlineColor);
+        drawTexture(icon.texture, sx, sy, size / 2.0, Math.round(alpha * 255) << 24 | 0xFFFFFF);
+        return true;
+    }
+
+    static void drawTexture(int texture, double sx, double sy, double half, int color) {
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, icon);
-        GL11.glColor4f(1f, 1f, 1f, alpha);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GL11.glColor4ub((byte) (color >> 16), (byte) (color >> 8), (byte) color, (byte) (color >>> 24));
         GL11.glBegin(GL11.GL_QUADS);
         GL11.glTexCoord2d(0, 1);
         GL11.glVertex3d(sx - half, sy + half, 0);
@@ -138,22 +144,19 @@ public final class MobIcons {
         GL11.glVertex3d(sx - half, sy - half, 0);
         GL11.glEnd();
         GL11.glColor4f(1f, 1f, 1f, 1f);
-        return true;
     }
 
-    private static Integer icon(EntityLivingBase entity) {
+    private static Icon icon(EntityLivingBase entity) {
         if (failures >= 5 || !OpenGlHelper.isFramebufferEnabled() || !initReflection()) {
             return null;
         }
         Object world = Minecraft.getMinecraft().theWorld;
         if (world != iconWorld) {
             // Made again in each world: a resource pack or a mod's skins may have changed.
-            iconWorld = world;
-            for (int old : ICONS.values()) {
-                GlTextures.delete(old);
+            if (iconWorld != null) {
+                reset();
             }
-            ICONS.clear();
-            FAILED.clear();
+            iconWorld = world;
         }
         Render render = RenderManager.instance.getEntityRenderObject(entity);
         if (!(render instanceof RendererLivingEntity)) {
@@ -163,7 +166,7 @@ public final class MobIcons {
         if (key == null) {
             return null;
         }
-        Integer icon = ICONS.get(key);
+        Icon icon = ICONS.get(key);
         if (icon != null) {
             return icon;
         }
@@ -186,9 +189,24 @@ public final class MobIcons {
             FAILED.put(key, now);
             return null;
         }
-        icon = upload(pixels);
+        icon = new Icon(upload(pixels), new MobIconOutline(ICON, ICON, pixels, false));
         ICONS.put(key, icon);
         return icon;
+    }
+
+    static final class Icon {
+
+        private final int texture;
+        private final MobIconOutline outline;
+
+        Icon(int texture, MobIconOutline outline) {
+            this.texture = texture;
+            this.outline = outline;
+        }
+
+        void release() {
+            GlTextures.delete(texture);
+        }
     }
 
     /** What makes mobs of a kind look alike: renderer, skin, age, and a sheep's wool. */

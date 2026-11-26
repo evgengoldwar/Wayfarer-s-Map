@@ -97,8 +97,6 @@ public final class MobIconDump extends CommandBase {
         "top" };
     private static final int ICON = 0, ON_MAP = 1, FALLBACK = 2, PARTS = 3, FRONT = 4, THREE_QUARTER = 5, SIDE = 6,
         TOP = 7;
-    /** The dark tile under icons on the map (see MapDrawer). */
-    private static final int TILE = 0xFF101418;
     private static final int FRAMEBUFFER_BINDING = 0x8CA6;
     private static final int[] PALETTE = { 0xE6194B, 0x3CB44B, 0xFFE119, 0x4363D8, 0xF58231, 0x911EB4, 0x46F0F0,
         0xF032E6, 0xBCF60C, 0xFABEBE, 0x008080, 0xE6BEFF, 0x9A6324, 0xFFFAC8, 0x800000, 0xAAFFC3, 0x808000, 0xFFD8B1,
@@ -825,7 +823,7 @@ public final class MobIconDump extends CommandBase {
                 + "Pictures (each also in its own folder):\n"
                 + "  icon          the generated icon (used if there is no ready-made icon): the mob rendered unlit\n"
                 + "                facing the viewer, the head cut out, else the whole mob.\n"
-                + "  onMap         that icon on the map's dark tile at "
+                + "  onMap         that icon with a 1 px outline at "
                 + Arrays.toString(MAP_SIZES)
                 + " px, enlarged.\n"
                 + "  fallback      the face cut out of the skin (EntityIcons), drawn while the icon isn't made or if\n"
@@ -857,23 +855,28 @@ public final class MobIconDump extends CommandBase {
         }
     }
 
-    /** The icon on the map's dark tile at each of {@link #MAP_SIZES}, made small then enlarged to see its pixels. */
+    /** The icon with a 1 px outline at each of {@link #MAP_SIZES}, enlarged to see its pixels. */
     private static BufferedImage onMap(BufferedImage icon) {
         BufferedImage image = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = image.createGraphics();
         int half = SIZE / 2;
+        int side = icon.getWidth();
+        MobIconOutline outline = new MobIconOutline(side, side, icon.getRGB(0, 0, side, side, null, 0, side), false);
         for (int n = 0; n < MAP_SIZES.length; n++) {
-            int size = MAP_SIZES[n];
-            BufferedImage small = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+            int size = MAP_SIZES[n], span = size + 2;
+            BufferedImage small = new BufferedImage(span, span, BufferedImage.TYPE_INT_ARGB);
+            int[] ring = outline.ring(size, 1);
+            for (int i = 0; i < ring.length; i++) {
+                ring[i] = ring[i] & 0xFF000000 | MapDrawer.NEUTRAL_COLOR & 0xFFFFFF;
+            }
+            small.setRGB(0, 0, span, span, ring, 0, span);
             Graphics2D s = small.createGraphics();
-            s.setColor(new Color(TILE, true));
-            s.fillRect(0, 0, size, size);
-            s.drawImage(shrink(icon, size), 0, 0, null);
+            s.drawImage(shrink(icon, size), 1, 1, null);
             s.dispose();
-            int scale = (half - 8) / size;
-            int x = n % 2 * half + (half - size * scale) / 2, y = n / 2 * half + (half - size * scale) / 2;
+            int scale = (half - 8) / span;
+            int x = n % 2 * half + (half - span * scale) / 2, y = n / 2 * half + (half - span * scale) / 2;
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-            g.drawImage(small, x, y, size * scale, size * scale, null);
+            g.drawImage(small, x, y, span * scale, span * scale, null);
         }
         g.dispose();
         return image;

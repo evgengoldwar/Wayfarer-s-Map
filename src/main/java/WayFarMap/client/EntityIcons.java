@@ -2,11 +2,14 @@ package WayFarMap.client;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBase;
@@ -24,7 +27,9 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.ResourceLocation;
 
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 import WayFarMap.WayFarMap;
 
@@ -85,6 +90,8 @@ public final class EntityIcons {
     private static final Face NONE = new Face(0, 0, 0, 0, 0, 0);
     /** Renderers are shared by all entities of a type, so the face is looked up once per renderer. */
     private static final Map<Render, Face> FACES = new IdentityHashMap<>();
+    private static final int MASK_SIDE = 64;
+    private static final Map<Face, Map<ResourceLocation, Optional<MobIconOutline>>> OUTLINES = new IdentityHashMap<>();
 
     private static Method textureMethod;
     private static Field mainModelField;
@@ -94,6 +101,10 @@ public final class EntityIcons {
     private static boolean reflectionFailed;
 
     private EntityIcons() {}
+
+    static void resetOutlines() {
+        OUTLINES.clear();
+    }
 
     /**
      * Draws the mob's face centered on the given point, fitted in a {@code size} square.
@@ -106,6 +117,11 @@ public final class EntityIcons {
 
     /** Same, at the given opacity. */
     public static boolean drawFace(EntityLivingBase entity, double sx, double sy, float size, float alpha) {
+        return drawFace(entity, sx, sy, size, alpha, 1, 0, 0);
+    }
+
+    static boolean drawFace(EntityLivingBase entity, double sx, double sy, float size, float alpha, double pixel,
+        int outlineWidth, int outlineColor) {
         Render render = RenderManager.instance.getEntityRenderObject(entity);
         if (!(render instanceof RendererLivingEntity) || !initReflection()) {
             return false;
@@ -138,6 +154,15 @@ public final class EntityIcons {
         Minecraft.getMinecraft()
             .getTextureManager()
             .bindTexture(texture);
+        if (outlineWidth > 0 && outlineColor >>> 24 != 0) {
+            MobIconOutline outline = outline(face, texture, 2 * halfW / size, 2 * halfH / size);
+            if (outline != null) {
+                outline.draw(sx, sy, size, pixel, outlineWidth, outlineColor);
+                Minecraft.getMinecraft()
+                    .getTextureManager()
+                    .bindTexture(texture);
+            }
+        }
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
@@ -162,6 +187,73 @@ public final class EntityIcons {
         tessellator.addVertexWithUV(sx - halfW, sy - halfH, 0, face.u0, face.v0);
         tessellator.draw();
         return true;
+    }
+
+    private static MobIconOutline outline(Face face, ResourceLocation texture, double width, double height) {
+        Map<ResourceLocation, Optional<MobIconOutline>> skins = OUTLINES.computeIfAbsent(
+            face,
+            ignored -> new LinkedHashMap<ResourceLocation, Optional<MobIconOutline>>(4, 0.75f, true) {
+
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<ResourceLocation, Optional<MobIconOutline>> eldest) {
+                    return size() > 8;
+                }
+            });
+        return skins.computeIfAbsent(texture, name -> {
+            try {
+                return Optional.ofNullable(readOutline(face, width, height));
+            } catch (RuntimeException e) {
+                WayFarMap.LOG.debug("Could not read the outline for mob skin " + name, e);
+                return Optional.empty();
+            }
+        })
+            .orElse(null);
+    }
+
+    /** The bound skin can be assembled by the game. Read it once per face and skin, including any face layers. */
+    private static MobIconOutline readOutline(Face face, double width, double height) {
+        int skinWidth = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+        int skinHeight = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+        if (skinWidth <= 0 || skinHeight <= 0 || (long) skinWidth * skinHeight > 2048 * 2048) {
+            return null;
+        }
+        IntBuffer skin = BufferUtils.createIntBuffer(skinWidth * skinHeight);
+        GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, skin);
+        int[] mask = new int[MASK_SIDE * MASK_SIDE];
+        if (face.parts == null) {
+            Part part = new Part(new float[] { face.u0, face.v0, face.u1, face.v1 }, 0, 0, 1, 1, 0);
+            samplePart(mask, part, skin, skinWidth, skinHeight, width, height);
+        } else {
+            for (Part part : face.parts) {
+                samplePart(mask, part, skin, skinWidth, skinHeight, width, height);
+            }
+        }
+        return new MobIconOutline(MASK_SIDE, MASK_SIDE, mask, true);
+    }
+
+    private static void samplePart(int[] mask, Part part, IntBuffer skin, int skinWidth, int skinHeight, double width,
+        double height) {
+        double left = (1 - width) / 2 + part.x0 * width, right = (1 - width) / 2 + part.x1 * width;
+        double top = (1 - height) / 2 + part.y0 * height, bottom = (1 - height) / 2 + part.y1 * height;
+        for (int y = 0; y < MASK_SIDE; y++) {
+            double py = (y + 0.5) / MASK_SIDE;
+            if (py < top || py >= bottom) {
+                continue;
+            }
+            double v = part.v0 + (part.v1 - part.v0) * (py - top) / (bottom - top);
+            int sy = Math.max(0, Math.min(skinHeight - 1, (int) (v * skinHeight)));
+            for (int x = 0; x < MASK_SIDE; x++) {
+                double px = (x + 0.5) / MASK_SIDE;
+                if (px < left || px >= right) {
+                    continue;
+                }
+                double u = part.u0 + (part.u1 - part.u0) * (px - left) / (right - left);
+                int sx = Math.max(0, Math.min(skinWidth - 1, (int) (u * skinWidth)));
+                int i = y * MASK_SIDE + x;
+                int a = skin.get(sy * skinWidth + sx) >>> 24;
+                mask[i] = (a + (mask[i] >>> 24) * (255 - a) / 255) << 24;
+            }
+        }
     }
 
     /** Looks up the private/protected members by type, so it works with both dev and obfuscated names. */

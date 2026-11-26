@@ -39,7 +39,7 @@ It is **client-side**: the map is built from the chunks your client loads, so it
 - **Day & night** — the map darkens with the game clock, and torches, lamps and lava glow warm. Can be locked to always day or always night.
 - **Other dimensions** — browse any saved dimension without going there (Nether coordinates are converted 1:8).
 - **Search** — in biome, ore or fluid view, type to grey out everything else and outline the matches.
-- **Players & mobs** — shown with face icons in colored frames: 🔴 hostile, 🟢 animals, 🟡 others. The flat map and minimap use the supplied pixel icons where available and generate faces for other mobs. Filters per category.
+- **Players & mobs** — the flat map and minimap show supplied or generated mob icons with outlines that follow their silhouettes. The colors indicate the mob's category, with filters per category.
 - **Chunk grid**, **right-click teleport** (when you have `/tp` permission) and a built-in **help screen** (`?` on the map).
 
 ### 🧊 3D map

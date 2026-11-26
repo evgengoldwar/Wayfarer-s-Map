@@ -29,6 +29,7 @@ public final class MobMapIcons {
             icon.ifPresent(Icon::release);
         }
         ICONS.clear();
+        MobIcons.reset();
     }
 
     static boolean hasIcon(Class<?> kind) {
@@ -36,10 +37,10 @@ public final class MobMapIcons {
             .isPresent();
     }
 
-    static Integer texture(Class<?> kind) {
+    static MobIcons.Icon icon(Class<?> kind) {
         Icon icon = ICONS.computeIfAbsent(kind, MobMapIcons::read)
             .orElse(null);
-        return icon == null ? null : icon.texture();
+        return icon == null ? null : icon.upload();
     }
 
     private static Optional<Icon> read(Class<?> kind) {
@@ -67,24 +68,28 @@ public final class MobMapIcons {
     private static final class Icon {
 
         private final BufferedImage image;
-        private int texture;
+        private MobIcons.Icon uploaded;
 
         Icon(BufferedImage image) {
             this.image = image;
         }
 
-        int texture() {
-            if (texture == 0) {
-                texture = GlTextures.create();
+        MobIcons.Icon upload() {
+            if (uploaded == null) {
+                int texture = GlTextures.create();
                 // Nearest-neighbor filtering preserves the pixels, clamp keeps the transparent edge.
                 TextureUtil.uploadTextureImageAllocate(texture, image, false, true);
+                int width = image.getWidth(), height = image.getHeight();
+                uploaded = new MobIcons.Icon(
+                    texture,
+                    new MobIconOutline(width, height, image.getRGB(0, 0, width, height, null, 0, width), true));
             }
-            return texture;
+            return uploaded;
         }
 
         void release() {
-            if (texture != 0) {
-                GlTextures.delete(texture);
+            if (uploaded != null) {
+                uploaded.release();
             }
         }
     }

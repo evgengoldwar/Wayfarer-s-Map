@@ -671,7 +671,7 @@ public final class MapDrawer {
     private static final float ZOOM_GROWTH = 6f;
 
     /**
-     * Draws mobs (their face in a frame colored by their kind, or a dot) and other players (their face) that are
+     * Draws mobs (their face outlined in the color of their kind, or a dot) and other players (their face) that are
      * within the rectangle.
      *
      * @param playerSize size of player heads in GUI pixels
@@ -751,7 +751,7 @@ public final class MapDrawer {
                 drawEntityIcon(entity, sx, sy, iconSize, color, alpha, iconRotation);
                 String name = mobName(entity);
                 if (name != null) {
-                    drawSmallName(font, name, sx, sy + half + frameOutside(sx, sy) + 1, nameScale, alpha);
+                    drawSmallName(font, name, sx, sy + half + outlineOutside() + 1, nameScale, alpha);
                 }
                 GL11.glPopMatrix();
             } else {
@@ -812,7 +812,7 @@ public final class MapDrawer {
     /** Size of a screen pixel in the drawing space the matrices were read in. */
     private static double readPixel = 1;
 
-    /** Reads the current GL matrices and viewport for {@link #pixelSquare} and {@link #frameOutside}. */
+    /** Reads the current GL matrices and viewport for {@link #pixelSquare} and {@link #outlineOutside}. */
     private static void readMatrices() {
         GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, MODELVIEW);
         GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, PROJECTION);
@@ -860,7 +860,7 @@ public final class MapDrawer {
 
     /**
      * The square of {@code size} centered on (sx, sy), its edges moved to the nearest screen pixel edges, and the size
-     * of a screen pixel here: {x0, y0, x1, y1, pixel}. A frame of whole pixels around it is then as wide on every side
+     * of a screen pixel here: {x0, y0, x1, y1, pixel}. An outline of whole pixels is then as wide on every side
      * whatever the GUI scale and wherever the mob is between pixels. Left where it is if the drawing is turned or
      * slanted on the screen (no pixel grid to fit). From the matrices of the last {@link #readMatrices}, the icon
      * turned upright by {@code turn} degrees around its center since.
@@ -893,22 +893,9 @@ public final class MapDrawer {
         return readPixel;
     }
 
-    /** How far a mob icon's frame (and its dark edge) reaches out of the tile here, in the drawing's units. */
-    private static double frameOutside(double sx, double sy) {
-        int frame = Math.max(0, Config.mobFrameWidth);
-        if (frame == 0) {
-            return 0;
-        }
-        return (frame + (frame > 1 ? 1 : 0)) * readPixel;
-    }
-
-    /** The band of width {@code w} just outside the rectangle, in four pieces that don't overlap. */
-    private static void frameAround(Tessellator tessellator, double x0, double y0, double x1, double y1, double w,
-        int color) {
-        fillRect(tessellator, x0 - w, y0 - w, x1 + w, y0, color);
-        fillRect(tessellator, x0 - w, y1, x1 + w, y1 + w, color);
-        fillRect(tessellator, x0 - w, y0, x0, y1, color);
-        fillRect(tessellator, x1, y0, x1 + w, y1, color);
+    /** How far the outline can reach outside the icon, in the drawing's units. */
+    private static double outlineOutside() {
+        return Math.max(0, Config.mobFrameWidth) * readPixel;
     }
 
     private static int withAlpha(int color, float alpha) {
@@ -1009,7 +996,7 @@ public final class MapDrawer {
     }
 
     /**
-     * A small arrow just outside the mob's icon on the side it looks to, in its frame color: drawn smooth (like the
+     * A small arrow just outside the mob's icon on the side it looks to, in its outline color: drawn smooth (like the
      * player's marker) and under the icon, so it seems to come out of it.
      */
     private static void drawFacing(EntityLivingBase entity, double sx, double sy, float half, int color, float alpha,
@@ -1018,7 +1005,7 @@ public final class MapDrawer {
             + MathHelper.wrapAngleTo180_float(entity.rotationYawHead - entity.prevRotationYawHead) * partialTicks;
         double rad = Math.toRadians(yaw);
         float arrow = Math.max(1.6f, half * 0.45f);
-        double distance = half + frameOutside(sx, sy) + arrow * 0.55;
+        double distance = half + outlineOutside() + arrow * 0.55;
         // Yaw 0 looks south (+z, down on the map), 90 west (-x).
         double ax = sx - Math.sin(rad) * distance, ay = sy + Math.cos(rad) * distance;
         drawPlayerMarker(
@@ -1033,7 +1020,7 @@ public final class MapDrawer {
 
     /**
      * One mob drawn the way the maps draw it, for the settings' preview: its icon with the arrow where it looks and a
-     * pet's name, or a dot while icons are off. With no mob (no world to make one in) the tile is drawn with a dot.
+     * pet's name, or a dot while icons are off or no mob can be made for the preview.
      */
     static void drawMob(FontRenderer font, EntityLivingBase entity, double sx, double sy, float iconSize, int color,
         float alpha, float textScale) {
@@ -1049,52 +1036,24 @@ public final class MapDrawer {
         drawEntityIcon(entity, sx, sy, iconSize, color, alpha, 0f);
         String name = entity == null ? null : mobName(entity);
         if (name != null) {
-            drawSmallName(font, name, sx, sy + half + frameOutside(sx, sy) + 1, textScale, alpha);
+            drawSmallName(font, name, sx, sy + half + outlineOutside() + 1, textScale, alpha);
         }
     }
 
     /**
-     * Draws the mob as a flat icon: its face on a small tile framed in the color of its kind (pet, hostile, friendly,
-     * neutral). Falls back to a dot when the mob's face can't be found.
+     * Draws the mob's face with a colored outline along its silhouette. Falls back to a dot if it has no icon.
      */
     private static void drawEntityIcon(EntityLivingBase entity, double sx, double sy, float size, int color,
         float alpha, float turn) {
-        // The tile on whole screen pixels, so the frame around it is exactly as many pixels wide on every side (it
-        // was in GUI pixels, 2 to 4 screen pixels, and between pixels it came out 1 on one side and 2 on another).
-        double[] tile = pixelSquare(sx, sy, size, turn);
-        double x0 = tile[0], y0 = tile[1], x1 = tile[2], y1 = tile[3], pixel = tile[4];
-        // 0 = no frame: the face alone on its dark tile. In screen pixels.
-        int frame = Math.max(0, Config.mobFrameWidth);
-        double frameWidth = frame * pixel;
-        float frameAlpha = alpha * Config.mobFrameOpacity / 100f;
-        Tessellator tessellator = Tessellator.instance;
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        if (frame > 1) {
-            // A dark pixel around a wide frame, so it shows on its own color.
-            frameAround(
-                tessellator,
-                x0 - frameWidth,
-                y0 - frameWidth,
-                x1 + frameWidth,
-                y1 + frameWidth,
-                pixel,
-                withAlpha(0xA0000000, frameAlpha));
-        }
-        if (frame > 0) {
-            // A band around the tile, not a square under it: see-through, it must not darken the face.
-            frameAround(tessellator, x0, y0, x1, y1, frameWidth, withAlpha(color, frameAlpha));
-        }
-        fillRect(tessellator, x0, y0, x1, y1, withAlpha(0xFF101418, alpha));
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        // Exactly over the dark tile: a face a pixel smaller left half pixels of it that showed as a dark line on
-        // one side.
-        // Its ready-made or generated icon; if neither is available, its face cut out of its skin.
-        double cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-        float shown = (float) (x1 - x0);
+        double[] bounds = pixelSquare(sx, sy, size, turn);
+        double cx = (bounds[0] + bounds[2]) / 2, cy = (bounds[1] + bounds[3]) / 2;
+        float shown = (float) (bounds[2] - bounds[0]);
+        double pixel = bounds[4];
+        int outlineWidth = Math.max(0, Config.mobFrameWidth);
+        int outlineColor = withAlpha(color, alpha * Config.mobFrameOpacity / 100f);
         if (entity == null
-            || !MobIcons.draw(entity, cx, cy, shown, alpha) && !EntityIcons.drawFace(entity, cx, cy, shown, alpha)) {
+            || !MobIcons.draw(entity, cx, cy, shown, alpha, pixel, outlineWidth, outlineColor)
+                && !EntityIcons.drawFace(entity, cx, cy, shown, alpha, pixel, outlineWidth, outlineColor)) {
             drawDot(cx, cy, 1f, withAlpha(color, alpha), alpha);
         }
         GL11.glColor4f(1f, 1f, 1f, 1f);
