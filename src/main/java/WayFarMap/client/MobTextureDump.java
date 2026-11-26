@@ -38,14 +38,11 @@ import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.ITextureObject;
-import net.minecraft.client.renderer.texture.ITickableTextureObject;
 import net.minecraft.client.renderer.texture.LayeredTexture;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.resources.AbstractResourcePack;
-import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourcePack;
 import net.minecraft.client.resources.ResourcePackRepository;
 import net.minecraft.client.shader.Framebuffer;
@@ -90,6 +87,17 @@ public final class MobTextureDump extends CommandBase {
     /** Side of the buffer the mob is drawn into, only to see which textures it binds. */
     private static final int SIZE = 64;
     private static final int FRAMEBUFFER_BINDING = 0x8CA6;
+
+    /** Textures bound while a mob is drawn for the dump; null at any other time. */
+    private static Set<ResourceLocation> recording;
+
+    /** Called for every texture bound (see MixinTextureManager): noted only while a mob is drawn for the dump. */
+    public static void noteBound(ResourceLocation location) {
+        Set<ResourceLocation> set = recording;
+        if (set != null && location != null) {
+            set.add(location);
+        }
+    }
 
     @Override
     public String getCommandName() {
@@ -159,8 +167,6 @@ public final class MobTextureDump extends CommandBase {
         final List<Map<String, Object>> infos = new ArrayList<>();
         Framebuffer framebuffer;
         int mobs;
-        /** The game's own texture manager, put back after each mob whatever its renderer did. */
-        TextureManager original;
 
         Dump(Minecraft mc, String filter) {
             this.mc = mc;
@@ -177,7 +183,6 @@ public final class MobTextureDump extends CommandBase {
             }
             MobIconDump.findReflection();
             Map<String, Class<?>> kinds = MobIconDump.mobKinds(filter);
-            original = mc.getTextureManager();
             try {
                 framebuffer = new Framebuffer(SIZE, SIZE, true);
                 for (Map.Entry<String, Class<?>> kind : kinds.entrySet()) {
@@ -192,7 +197,7 @@ public final class MobTextureDump extends CommandBase {
                 if (game != null) {
                     game.bindFramebuffer(true);
                 }
-                putBack();
+                recording = null;
                 resources.close();
             }
             try (Writer writer = new OutputStreamWriter(
@@ -247,7 +252,8 @@ public final class MobTextureDump extends CommandBase {
             // A texture the game layers from files (a horse's coat and markings): the files too.
             List<String> layers = new ArrayList<>();
             for (ResourceLocation location : new ArrayList<>(found)) {
-                ITextureObject object = original.getTexture(location);
+                ITextureObject object = mc.getTextureManager()
+                    .getTexture(location);
                 if (object instanceof LayeredTexture) {
                     for (Object layer : ((LayeredTexture) object).layeredTextureNames) {
                         if (layer != null) {
@@ -354,14 +360,16 @@ public final class MobTextureDump extends CommandBase {
         }
 
         /**
-         * Draws the mob once into a small buffer while the texture manager notes every texture bound; the game's
-         * texture manager is put back right after.
+         * Draws the mob once into a small buffer, noting every texture bound meanwhile. GL's matrix and attribute
+         * stacks are put back as they were, also when its renderer fails halfway (pushed and never popped).
          */
         private Set<ResourceLocation> drawRecording(EntityLivingBase entity) {
-            Recorder recorder = new Recorder(original, mc.getResourceManager());
+            Set<ResourceLocation> bound = new LinkedHashSet<>();
             RenderManager manager = RenderManager.instance;
-            Field minecraftField = textureManagerField();
             int previous = GL11.glGetInteger(FRAMEBUFFER_BINDING);
+            int modelview = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+            int projection = GL11.glGetInteger(GL11.GL_PROJECTION_STACK_DEPTH);
+            int attrib = GL11.glGetInteger(GL11.GL_ATTRIB_STACK_DEPTH);
             GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
             GL11.glMatrixMode(GL11.GL_PROJECTION);
             GL11.glPushMatrix();
@@ -374,10 +382,6 @@ public final class MobTextureDump extends CommandBase {
             int bossTime = BossStatus.statusBarTime;
             boolean bossColor = BossStatus.hasColorModifier;
             try {
-                if (minecraftField != null) {
-                    minecraftField.set(mc, recorder);
-                }
-                manager.renderEngine = recorder;
                 framebuffer.bindFramebuffer(true);
                 GL11.glClearColor(0f, 0f, 0f, 0f);
                 GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
@@ -390,18 +394,17 @@ public final class MobTextureDump extends CommandBase {
                 GL11.glEnable(GL11.GL_DEPTH_TEST);
                 RenderHelper.enableStandardItemLighting();
                 manager.playerViewY = 180f;
+                recording = bound;
                 manager.renderEntityWithPosYaw(entity, 0, 0, 0, 0f, 1f);
             } catch (Throwable t) {
                 // What was bound before it failed is still worth having.
             } finally {
+                recording = null;
                 manager.playerViewY = viewY;
                 BossStatus.bossName = bossName;
                 BossStatus.healthScale = bossHealth;
                 BossStatus.statusBarTime = bossTime;
                 BossStatus.hasColorModifier = bossColor;
-                // A renderer that kept the recorder can't note the next mobs' textures as its own.
-                recorder.recording = false;
-                putBack();
                 RenderHelper.disableStandardItemLighting();
                 Framebuffer game = mc.getFramebuffer();
                 if (game != null && previous != 0 && previous == game.framebufferObject) {
@@ -409,24 +412,21 @@ public final class MobTextureDump extends CommandBase {
                 } else {
                     framebuffer.unbindFramebuffer();
                 }
+                // Down to the depths before: ours, and whatever a renderer that failed left pushed.
                 GL11.glMatrixMode(GL11.GL_PROJECTION);
-                GL11.glPopMatrix();
+                while (GL11.glGetInteger(GL11.GL_PROJECTION_STACK_DEPTH) > projection) {
+                    GL11.glPopMatrix();
+                }
                 GL11.glMatrixMode(GL11.GL_MODELVIEW);
-                GL11.glPopMatrix();
-                GL11.glPopAttrib();
+                while (GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH) > modelview) {
+                    GL11.glPopMatrix();
+                }
+                while (GL11.glGetInteger(GL11.GL_ATTRIB_STACK_DEPTH) > attrib) {
+                    GL11.glPopAttrib();
+                }
+                GL11.glMatrixMode(GL11.GL_MODELVIEW);
             }
-            return recorder.bound;
-        }
-
-        /** The game's texture manager back where the dump put the recorder. */
-        private void putBack() {
-            RenderManager.instance.renderEngine = original;
-            Field field = textureManagerField();
-            if (field != null) {
-                try {
-                    field.set(mc, original);
-                } catch (IllegalAccessException ignored) {}
-            }
+            return bound;
         }
 
         /** mobs.txt: each mob with its textures, and where each was saved. */
@@ -541,70 +541,6 @@ public final class MobTextureDump extends CommandBase {
             .toLowerCase(Locale.ROOT);
         String last = dir.substring(dir.lastIndexOf('/') + 1);
         return (dir.contains("entit") || dir.contains("mob")) && !SHARED_FOLDERS.contains(last);
-    }
-
-    /** The texture manager field of Minecraft, found by its type; null if there is none. */
-    private static Field textureManagerField() {
-        for (Field field : Minecraft.class.getDeclaredFields()) {
-            if (field.getType() == TextureManager.class) {
-                field.setAccessible(true);
-                return field;
-            }
-        }
-        return null;
-    }
-
-    /** The game's texture manager, noting every texture bound through it. */
-    private static final class Recorder extends TextureManager {
-
-        final TextureManager inner;
-        final Set<ResourceLocation> bound = new LinkedHashSet<>();
-        /** Noting only while its mob is drawn. */
-        boolean recording = true;
-
-        Recorder(TextureManager inner, IResourceManager resources) {
-            super(resources);
-            this.inner = inner;
-        }
-
-        @Override
-        public void bindTexture(ResourceLocation location) {
-            if (location != null && recording) {
-                bound.add(location);
-            }
-            inner.bindTexture(location);
-        }
-
-        @Override
-        public boolean loadTickableTexture(ResourceLocation location, ITickableTextureObject texture) {
-            return inner.loadTickableTexture(location, texture);
-        }
-
-        @Override
-        public boolean loadTexture(ResourceLocation location, ITextureObject texture) {
-            return inner.loadTexture(location, texture);
-        }
-
-        @Override
-        public ITextureObject getTexture(ResourceLocation location) {
-            return inner.getTexture(location);
-        }
-
-        @Override
-        public ResourceLocation getDynamicTextureLocation(String name, DynamicTexture texture) {
-            return inner.getDynamicTextureLocation(name, texture);
-        }
-
-        @Override
-        public void tick() {}
-
-        @Override
-        public void deleteTexture(ResourceLocation location) {
-            inner.deleteTexture(location);
-        }
-
-        @Override
-        public void onResourceManagerReload(IResourceManager manager) {}
     }
 
     /**
