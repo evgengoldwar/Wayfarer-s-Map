@@ -25,7 +25,6 @@ import java.util.regex.Pattern;
 import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.EmptyChunk;
@@ -42,6 +41,7 @@ import WayFarMap.client.Lang;
 import WayFarMap.client.gui.ui.Icons;
 import WayFarMap.client.map.MapManager;
 import WayFarMap.share.Chargers;
+import WayFarMap.share.GtMeta;
 import WayFarMap.share.MachinePoint;
 import WayFarMap.share.ShareNetwork;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -66,7 +66,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
  * A GregTech long range of thousands of blocks covers most of the dimension: such a charger gets no circle, only its
  * mark and the range in its tooltip.
  */
-public final class ChargersLayer {
+public final class ChargersLayer implements MachineScanner.Layer {
 
     public static final ChargersLayer INSTANCE = new ChargersLayer();
 
@@ -76,7 +76,6 @@ public final class ChargersLayer {
     private static final int UNKNOWN_COLOR = 0xB0BEC5;
     /** Ranges above this are not drawn as circles. */
     private static final double MAX_CIRCLE = 4096;
-    private static final int SCAN_TICKS = 20;
     private static final long SAVE_DELAY_MS = 5000;
     /** How long after a right click the charger's chat answer is waited for. */
     private static final long ANSWER_MS = 2000;
@@ -140,7 +139,6 @@ public final class ChargersLayer {
     private File worldDirectory;
     private boolean inWorld, dirty;
     private long dirtySince;
-    private int tick;
 
     /** From the network thread. */
     public void receive(ShareNetwork.MachineList message) {
@@ -181,11 +179,6 @@ public final class ChargersLayer {
                 apply(message);
             }
             finishClick();
-            if (++tick >= SCAN_TICKS) {
-                tick = 0;
-                scan(mc, mc.theWorld.provider.dimensionId);
-                ask(mc);
-            }
         } catch (Throwable t) {
             Mods.fail(Mods.Addon.CHARGERS, t);
         }
@@ -194,49 +187,56 @@ public final class ChargersLayer {
         }
     }
 
-    /** Adds the chargers in loaded chunks and drops those whose loaded chunk no longer has them. */
-    private void scan(Minecraft mc, int dimension) {
-        World world = mc.theWorld;
-        int radius = Math.min(32, Math.max(12, mc.gameSettings.renderDistanceChunks) + 2);
-        int chunkX = MathHelper.floor_double(mc.thePlayer.posX) >> 4;
-        int chunkZ = MathHelper.floor_double(mc.thePlayer.posZ) >> 4;
-        Set<Long> present = new HashSet<>();
-        for (int cx = chunkX - radius; cx <= chunkX + radius; cx++) {
-            for (int cz = chunkZ - radius; cz <= chunkZ + radius; cz++) {
-                Chunk chunk = world.getChunkFromChunkCoords(cx, cz);
-                if (chunk instanceof EmptyChunk || !chunk.isChunkLoaded) {
-                    continue;
-                }
-                for (Object o : chunk.chunkTileEntityMap.values()) {
-                    TileEntity tile = (TileEntity) o;
-                    if (!tile.isInvalid() && see(dimension, tile)) {
-                        present.add(pack(tile.xCoord, tile.yCoord, tile.zCoord));
-                    }
-                }
-            }
-        }
-        Map<Long, Seen> points = seen.get(dimension);
-        if (points == null) {
-            return;
-        }
-        for (Iterator<Map.Entry<Long, Seen>> it = points.entrySet()
-            .iterator(); it.hasNext();) {
-            Map.Entry<Long, Seen> entry = it.next();
-            Seen point = entry.getValue();
-            if (present.contains(entry.getKey()) || !isLoaded(world, point.x, point.z)) {
-                continue;
-            }
-            TileEntity tile = world.getTileEntity(point.x, point.y, point.z);
-            if (kindAt(tile) != point.kind && !(point.kind == Chargers.KIND_GT && Chargers.isGtMachinePending(tile))) {
-                it.remove();
-                markDirty();
-            }
+    // ---------------------------------------------------------------- MachineScanner
+
+    private final Set<Long> present = new HashSet<>();
+
+    @Override
+    public Mods.Addon addon() {
+        return Mods.Addon.CHARGERS;
+    }
+
+    @Override
+    public boolean scans() {
+        return inWorld && Mods.isChargersAvailable();
+    }
+
+    @Override
+    public void sweepStart() {
+        present.clear();
+    }
+
+    @Override
+    public void see(int dimension, TileEntity tile, Object gtMachine) {
+        if (record(dimension, tile, Chargers.gtChargerOf(gtMachine))) {
+            present.add(pack(tile.xCoord, tile.yCoord, tile.zCoord));
         }
     }
 
+    /** Drops the chargers whose loaded chunk no longer has them, and asks the server about those seen. */
+    @Override
+    public void sweepEnd(World world, int dimension) {
+        Map<Long, Seen> points = seen.get(dimension);
+        if (points != null) {
+            for (Iterator<Map.Entry<Long, Seen>> it = points.entrySet()
+                .iterator(); it.hasNext();) {
+                Map.Entry<Long, Seen> entry = it.next();
+                Seen point = entry.getValue();
+                if (present.contains(entry.getKey()) || !isLoaded(world, point.x, point.z)) {
+                    continue;
+                }
+                TileEntity tile = world.getTileEntity(point.x, point.y, point.z);
+                if (kindAt(tile) != point.kind && !(point.kind == Chargers.KIND_GT && GtMeta.isPending(tile))) {
+                    it.remove();
+                    markDirty();
+                }
+            }
+        }
+        ask(Minecraft.getMinecraft());
+    }
+
     /** Records the tile entity if it is a charger; false if it isn't one. */
-    private boolean see(int dimension, TileEntity tile) {
-        Object gt = Chargers.gtCharger(tile);
+    private boolean record(int dimension, TileEntity tile, Object gt) {
         int kind = gt != null ? Chargers.KIND_GT : Chargers.isEnderIoCharger(tile) ? Chargers.KIND_ENDERIO : -1;
         if (kind < 0) {
             return false;

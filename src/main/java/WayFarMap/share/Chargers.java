@@ -44,7 +44,6 @@ public final class Chargers {
     private static Class<?> gtCharger;
     private static Field gtTier, gtMode, gtLocked;
     private static long[] voltages;
-    private static final Map<Class<?>, Optional<Method>> META_GETTERS = new ConcurrentHashMap<>();
 
     public static boolean isGtAvailable() {
         if (gt == null) {
@@ -75,45 +74,12 @@ public final class Chargers {
 
     /** The GregTech charger in the tile entity (its meta tile entity), or null. */
     public static Object gtCharger(TileEntity tile) {
-        if (tile == null || !isGtAvailable()) {
-            return null;
-        }
-        try {
-            Optional<Method> getter = META_GETTERS.computeIfAbsent(tile.getClass(), Chargers::metaGetter);
-            if (!getter.isPresent()) {
-                return null;
-            }
-            Object meta = getter.get()
-                .invoke(tile);
-            return gtCharger.isInstance(meta) ? meta : null;
-        } catch (Throwable t) {
-            return null;
-        }
+        return tile == null || !isGtAvailable() ? null : gtChargerOf(GtMeta.of(tile));
     }
 
-    /**
-     * A GregTech machine block whose machine the client has not been told yet (it comes in a later packet than the
-     * block): not a sign that a machine seen there is gone.
-     */
-    public static boolean isGtMachinePending(TileEntity tile) {
-        if (tile == null) {
-            return false;
-        }
-        try {
-            Optional<Method> getter = META_GETTERS.computeIfAbsent(tile.getClass(), Chargers::metaGetter);
-            return getter.isPresent() && getter.get()
-                .invoke(tile) == null;
-        } catch (Throwable t) {
-            return false;
-        }
-    }
-
-    private static Optional<Method> metaGetter(Class<?> type) {
-        try {
-            return Optional.of(type.getMethod("getMetaTileEntity"));
-        } catch (Throwable t) {
-            return Optional.empty();
-        }
+    /** The machine of a GregTech block ({@link GtMeta#of}) if it is a charger, or null. */
+    public static Object gtChargerOf(Object machine) {
+        return machine != null && isGtAvailable() && gtCharger.isInstance(machine) ? machine : null;
     }
 
     public static int gtTier(Object charger) {

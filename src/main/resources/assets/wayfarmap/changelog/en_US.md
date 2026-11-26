@@ -25,6 +25,11 @@
   - Only for players with Opis rights on the server (operators and its privileged list; cheats in single player), the buttons aren't shown to others. Needs Opis 1.4.12
   - How often the server is asked: settings → Mod layers → Opis → Refresh
 
+## Coverage zones
+- [new] Flight (GregTech, Automagy): where you can fly. A MagLev Pylon gives flight to a MagLev Harness inside a cube around it, so its zone is a magenta square, whole at your height or gone; its energy is known only to the server: without the mod there the square is the range without power, gray. A Thaumostatic Spire refuels thaumostatic harnesses in a cyan circle at any height: 4 blocks per pylon, 15 while it burns Aer. Only the machines you have seen are shown
+  - The thin outline of a pylon's whole square can be turned off: settings → Mod layers → Flight → Full range outline
+- [fix] No more hitch every second on big bases: the coverage layers look for their machines all at once, a little each tick
+
 # 0.0.21
 
 ## Coverage zones

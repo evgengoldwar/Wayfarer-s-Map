@@ -1,13 +1,8 @@
 package WayFarMap.client.integration;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.EmptyChunk;
 
 import appeng.container.implementations.ContainerWireless;
 import appeng.core.AEConfig;
@@ -18,28 +13,13 @@ final class Ae2WirelessClient {
 
     private Ae2WirelessClient() {}
 
-    /**
-     * Access points in the loaded chunks within {@code radius} chunks: {x, y, z, active (0/1)} each. Looked for in the
-     * chunks, not in {@code loadedTileEntityList}: Forge puts only ticking tile entities there, and an access point
-     * doesn't tick.
-     */
-    static List<int[]> loadedAccessPoints(World world, int chunkX, int chunkZ, int radius) {
-        List<int[]> found = new ArrayList<>();
-        for (int cx = chunkX - radius; cx <= chunkX + radius; cx++) {
-            for (int cz = chunkZ - radius; cz <= chunkZ + radius; cz++) {
-                Chunk chunk = world.getChunkFromChunkCoords(cx, cz);
-                if (chunk instanceof EmptyChunk || !chunk.isChunkLoaded) {
-                    continue;
-                }
-                for (Object o : chunk.chunkTileEntityMap.values()) {
-                    if (o instanceof TileWireless && !((TileWireless) o).isInvalid()) {
-                        TileWireless tile = (TileWireless) o;
-                        found.add(new int[] { tile.xCoord, tile.yCoord, tile.zCoord, tile.isActive() ? 1 : 0 });
-                    }
-                }
-            }
+    /** {x, y, z, active (0/1)} if the tile entity is an access point, or null. */
+    static int[] accessPoint(TileEntity o) {
+        if (!(o instanceof TileWireless)) {
+            return null;
         }
-        return found;
+        TileWireless tile = (TileWireless) o;
+        return new int[] { tile.xCoord, tile.yCoord, tile.zCoord, tile.isActive() ? 1 : 0 };
     }
 
     static boolean isAccessPoint(World world, int x, int y, int z) {

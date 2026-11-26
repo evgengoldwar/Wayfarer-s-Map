@@ -1,9 +1,9 @@
 package WayFarMap.client.integration;
 
 /**
- * Which coverage circle the mouse is in on the world map, across all the coverage layers (AE2, chargers, drone
- * centres): the smallest one holding the cursor, the most telling of where it is. Layers are drawn one after another,
- * so the winner is picked from the circles offered during a frame and used in the next one: each layer offers its
+ * Which coverage circle (or square) the mouse is in on the world map, across all the coverage layers: the smallest
+ * one holding the cursor, the most telling of where it is. Layers are drawn one after another, so the winner is picked
+ * from the circles offered during a frame and used in the next one: each layer offers its
  * circles under the mouse ({@link #offer}) and draws the highlight of the one that won the frame before
  * ({@link #isWinner}). A frame late is not to be seen.
  */
@@ -30,6 +30,14 @@ public final class CoverageHover {
         double dx = mouseX - x, dy = mouseY - y;
         if (radius > 0.5 && dx * dx + dy * dy <= radius * radius) {
             offer(key, radius);
+        }
+        return isWinner(key);
+    }
+
+    /** {@link #track} for a square of that half side. */
+    static boolean trackSquare(String key, double x, double y, double half, int mouseX, int mouseY) {
+        if (half > 0.5 && Math.abs(mouseX - x) <= half && Math.abs(mouseY - y) <= half) {
+            offer(key, half);
         }
         return isWinner(key);
     }

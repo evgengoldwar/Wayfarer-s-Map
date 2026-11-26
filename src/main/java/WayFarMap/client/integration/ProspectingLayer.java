@@ -761,8 +761,8 @@ public final class ProspectingLayer {
     }
 
     /** Resolves input against the current view, independently of the last map or minimap render. */
-    public static Object getVeinAt(int dimension, double centerX, double centerZ, double scale, int width,
-        int height, int mouseX, int mouseY) {
+    public static Object getVeinAt(int dimension, double centerX, double centerZ, double scale, int width, int height,
+        int mouseX, int mouseY) {
         if (scale <= 0 || mouseX < 0 || mouseY < 0 || mouseX >= width || mouseY >= height) {
             return null;
         }

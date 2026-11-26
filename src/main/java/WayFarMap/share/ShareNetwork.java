@@ -38,9 +38,9 @@ public final class ShareNetwork {
     /** 4: AE2 wireless access points ({@link Wireless}), sent only to clients that say at least that. */
     public static final int WIRELESS_PROTOCOL = 4;
     /**
-     * 5: wireless chargers, drone centres and Monster Repellators the client has seen ({@link MachineAsk},
-     * {@link MachineList}), only with
-     * clients that say at least that.
+     * 5: wireless chargers, drone centres, Monster Repellators, MagLev Pylons and Thaumostatic Spires the client has
+     * seen ({@link MachineAsk}, {@link MachineList}), only with clients that say at least that. A layer added later
+     * needs no new number: an older client ignores a list of a layer it doesn't know, an older server an ask of one.
      */
     public static final int MACHINES_PROTOCOL = 5;
     /** Records per message from the server: at most ~50 KB even uncompressed. */
@@ -811,7 +811,7 @@ public final class ShareNetwork {
      */
     public static final class MachineList implements IMessage {
 
-        public static final int CHARGERS = 0, DRONES = 1, GUARDS = 2, LAYERS = 3;
+        public static final int CHARGERS = 0, DRONES = 1, GUARDS = 2, FLIGHT = 3, LAYERS = 4;
 
         public int layer;
         public final List<MachinePoint> points = new ArrayList<>(), foreign = new ArrayList<>();

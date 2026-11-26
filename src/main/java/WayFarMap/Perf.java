@@ -34,6 +34,8 @@ public final class Perf {
         LOOKS_TICK(Where.TICK, "3dLooksAhead", CAPTURE_3D),
         /** Block pictures drawn the tick before, read back from the graphics card and stored. */
         PICTURES_READ(Where.TICK, "3dPicturesRead", CAPTURE_3D),
+        /** Looking for the machines of the coverage layers (AE2, chargers, drone centres, mob guards). */
+        COVERAGE_SCAN(Where.TICK, "coverageScan", null),
         CHUNKLOAD(Where.SERVER, "chunkload", null),
         TEAM_MAP(Where.SERVER, "teamMap", null);
 

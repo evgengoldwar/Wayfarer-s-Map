@@ -53,6 +53,7 @@ import WayFarMap.client.integration.ClaimsLayer;
 import WayFarMap.client.integration.CoverageDrawer;
 import WayFarMap.client.integration.CoverageHover;
 import WayFarMap.client.integration.DronesLayer;
+import WayFarMap.client.integration.FlightLayer;
 import WayFarMap.client.integration.GuardsLayer;
 import WayFarMap.client.integration.Mods;
 import WayFarMap.client.integration.OpisLayer;
@@ -419,7 +420,8 @@ public class GuiWorldMap extends ScaledScreen {
             || Mods.isChargersAvailable()
             || Mods.isDronesAvailable()
             || Mods.isGuardsAvailable()
-            || builtOpis)) {
+            || builtOpis
+            || Mods.isFlightAvailable())) {
             addonsButton = new IconButton(ID_ADDONS, x, 4, Icons.ADDONS, Lang.format("wayfarmap.gui.addons"));
             addonsButton.iconColor = COLOR_ADDONS;
             addIconButton(addonsButton, x);
@@ -522,6 +524,12 @@ public class GuiWorldMap extends ScaledScreen {
                     .icon(Icons.CHUNK_LOADED)
                     .iconColor(0xFF66BB6A)
                     .key("opis_loaded"));
+        }
+        if (Mods.isFlightAvailable()) {
+            entries.add(
+                addonToggle("wayfarmap.gui.flight", Config.showFlight, Config::toggleFlight).icon(Icons.FLIGHT)
+                    .iconColor(0xFFE040FB)
+                    .key("flight"));
         }
         menu = entries;
         menuKind = MENU_ADDONS;
@@ -768,6 +776,15 @@ public class GuiWorldMap extends ScaledScreen {
                 () -> Config.showOpisLoaded,
                 GuiWorldMap::toggleOpisLoaded);
         }
+        if (Mods.isFlightAvailable()) {
+            addLayer(
+                Icons.FLIGHT,
+                0xFFE040FB,
+                "wayfarmap.gui.flight",
+                "flight",
+                () -> Config.showFlight,
+                Config::toggleFlight);
+        }
         int step = 19;
         int y = (HEADER_HEIGHT + height - FOOTER_HEIGHT) / 2 - (layerButtons.size() * step - 3) / 2;
         for (LayerButton layer : layerButtons) {
@@ -937,6 +954,10 @@ public class GuiWorldMap extends ScaledScreen {
     private static void toggleOpisLoaded() {
         Config.toggleOpisLoaded();
         OpisLayer.onShow();
+    }
+
+    private static boolean flightShown() {
+        return Config.showFlight && Mods.isFlightAvailable();
     }
 
     private static boolean chargersShown() {
@@ -1144,7 +1165,8 @@ public class GuiWorldMap extends ScaledScreen {
                 || chargersShown()
                 || dronesShown()
                 || guardsShown()
-                || opisShown();
+                || opisShown()
+                || flightShown();
         }
     }
 
@@ -1758,6 +1780,12 @@ public class GuiWorldMap extends ScaledScreen {
                 () -> ThaumcraftNodes
                     .draw(dimensionId, centerX, centerZ, scale, 0, 0, width, height, false, mouseX, mouseY));
         }
+        if (flightShown()) {
+            Mods.draw(
+                Mods.Addon.FLIGHT,
+                () -> FlightLayer
+                    .draw(dimensionId, centerX, centerZ, scale, 0, 0, width, height, false, mouseX, mouseY));
+        }
         if (guardsShown()) {
             Mods.draw(
                 Mods.Addon.GUARDS,
@@ -1986,6 +2014,9 @@ public class GuiWorldMap extends ScaledScreen {
                     }
                     if (tooltip == null && guardsShown()) {
                         tooltip = GuardsLayer.getHoveredTooltip(area);
+                    }
+                    if (tooltip == null && flightShown()) {
+                        tooltip = FlightLayer.getHoveredTooltip(area);
                     }
                 }
                 if (tooltip == null && prospecting && Config.showOreVeins) {

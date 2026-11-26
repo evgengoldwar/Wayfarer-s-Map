@@ -12,6 +12,7 @@ import org.lwjgl.opengl.GL11;
 import WayFarMap.WayFarMap;
 import WayFarMap.share.Chargers;
 import WayFarMap.share.DroneCentres;
+import WayFarMap.share.FlightZones;
 import WayFarMap.share.MobGuards;
 import cpw.mods.fml.common.Loader;
 
@@ -29,7 +30,7 @@ public final class Mods {
     private static Boolean thaumcraftNodes;
     private static Boolean ae2;
     private static Boolean opis;
-    private static boolean chargersBroken, dronesBroken, guardsBroken;
+    private static boolean chargersBroken, dronesBroken, guardsBroken, flightBroken;
     /** Set when drawing GregTech power failures failed: the layer is off for the rest of the session. */
     private static boolean powerfailsBroken;
 
@@ -118,6 +119,11 @@ public final class Mods {
         }
     }
 
+    /** GregTech's MagLev Pylon or Automagy's Thaumostatic Spire; see {@link FlightLayer}. */
+    public static boolean isFlightAvailable() {
+        return !flightBroken && FlightZones.isAvailable();
+    }
+
     private static Boolean nodeLayerDelete;
 
     /**
@@ -160,7 +166,8 @@ public final class Mods {
         CHARGERS,
         DRONES,
         GUARDS,
-        OPIS
+        OPIS,
+        FLIGHT
     }
 
     private static final Set<Addon> FAILED = new HashSet<>();
@@ -211,6 +218,9 @@ public final class Mods {
                 break;
             case OPIS:
                 opis = false;
+                break;
+            case FLIGHT:
+                flightBroken = true;
                 break;
         }
         if (FAILED.add(addon)) {

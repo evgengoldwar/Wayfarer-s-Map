@@ -19,7 +19,9 @@ import WayFarMap.client.WorldCleanup;
 import WayFarMap.client.integration.ChargersLayer;
 import WayFarMap.client.integration.ClaimsLayer;
 import WayFarMap.client.integration.DronesLayer;
+import WayFarMap.client.integration.FlightLayer;
 import WayFarMap.client.integration.GuardsLayer;
+import WayFarMap.client.integration.MachineScanner;
 import WayFarMap.client.integration.Mods;
 import WayFarMap.client.integration.OpisLayer;
 import WayFarMap.client.integration.WirelessLayer;
@@ -93,6 +95,12 @@ public class ClientProxy extends CommonProxy {
         if (Mods.isOpisAvailable()) {
             OpisLayer.register();
         }
+        if (Mods.isFlightAvailable()) {
+            FMLCommonHandler.instance()
+                .bus()
+                .register(FlightLayer.INSTANCE);
+        }
+        MachineScanner.register();
 
         FMLCommonHandler.instance()
             .bus()
@@ -148,6 +156,8 @@ public class ClientProxy extends CommonProxy {
             DronesLayer.INSTANCE.receive(list);
         } else if (list.layer == ShareNetwork.MachineList.GUARDS && Mods.isGuardsAvailable()) {
             GuardsLayer.INSTANCE.receive(list);
+        } else if (list.layer == ShareNetwork.MachineList.FLIGHT && Mods.isFlightAvailable()) {
+            FlightLayer.INSTANCE.receive(list);
         }
     }
 

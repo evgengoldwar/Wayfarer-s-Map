@@ -32,7 +32,6 @@ public final class DroneCentres {
     private static Method getRange;
     private static Field droneLevel;
     private static boolean clientKnowsLevel;
-    private static final Map<Class<?>, Optional<Method>> META_GETTERS = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Optional<Method>> IS_ACTIVE = new ConcurrentHashMap<>();
 
     private DroneCentres() {}
@@ -87,21 +86,12 @@ public final class DroneCentres {
 
     /** The drone centre in the tile entity (its meta tile entity), or null. */
     public static Object centre(TileEntity tile) {
-        if (tile == null || !isAvailable()) {
-            return null;
-        }
-        try {
-            Optional<Method> getter = META_GETTERS
-                .computeIfAbsent(tile.getClass(), t -> method(t, "getMetaTileEntity"));
-            if (!getter.isPresent()) {
-                return null;
-            }
-            Object meta = getter.get()
-                .invoke(tile);
-            return centre.isInstance(meta) ? meta : null;
-        } catch (Throwable t) {
-            return null;
-        }
+        return tile == null || !isAvailable() ? null : centreOf(GtMeta.of(tile));
+    }
+
+    /** The machine of a GregTech block ({@link GtMeta#of}) if it is a drone centre, or null. */
+    public static Object centreOf(Object machine) {
+        return machine != null && isAvailable() && centre.isInstance(machine) ? machine : null;
     }
 
     /** The drone level, 0 without a drone (or on a client that isn't told). */

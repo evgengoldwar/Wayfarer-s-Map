@@ -2,9 +2,6 @@ package WayFarMap.share;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.tileentity.TileEntity;
 
@@ -37,7 +34,6 @@ public final class MobGuards {
     private static Class<?> repellator, torch;
     private static Field tier, range;
     private static Method horizontal, vertical;
-    private static final Map<Class<?>, Optional<Method>> META_GETTERS = new ConcurrentHashMap<>();
 
     private MobGuards() {}
 
@@ -104,28 +100,12 @@ public final class MobGuards {
 
     /** The repellator machine of a GregTech machine block, or null. */
     public static Object repellator(TileEntity tile) {
-        if (tile == null || !isRepellatorAvailable()) {
-            return null;
-        }
-        try {
-            Optional<Method> getter = META_GETTERS.computeIfAbsent(tile.getClass(), MobGuards::metaGetter);
-            if (!getter.isPresent()) {
-                return null;
-            }
-            Object meta = getter.get()
-                .invoke(tile);
-            return repellator.isInstance(meta) ? meta : null;
-        } catch (Throwable t) {
-            return null;
-        }
+        return tile == null || !isRepellatorAvailable() ? null : repellatorOf(GtMeta.of(tile));
     }
 
-    private static Optional<Method> metaGetter(Class<?> type) {
-        try {
-            return Optional.of(type.getMethod("getMetaTileEntity"));
-        } catch (Throwable t) {
-            return Optional.empty();
-        }
+    /** The machine of a GregTech block ({@link GtMeta#of}) if it is a repellator, or null. */
+    public static Object repellatorOf(Object machine) {
+        return machine != null && isRepellatorAvailable() && repellator.isInstance(machine) ? machine : null;
     }
 
     public static int tier(Object repellator) {

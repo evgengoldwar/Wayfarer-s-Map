@@ -111,7 +111,7 @@ public class Config {
     public static int minimapView = MINIMAP_VIEW_FLAT, minimapLightMode = LIGHT_AUTO;
     public static boolean minimapOreVeins = true, minimapUndergroundFluids, minimapClaims, minimapPowerfails = true,
         minimapThaumcraftNodes = true, minimapWireless = true, minimapChargers = true, minimapDrones = true,
-        minimapGuards = true, minimapOpisTimes, minimapOpisLoaded;
+        minimapGuards = true, minimapOpisTimes, minimapOpisLoaded, minimapFlight = true;
     public static boolean minimapChunkGrid;
     public static boolean minimapPlayers = true, minimapHostileMobs = true, minimapPassiveMobs = true,
         minimapAmbientMobs = true, minimapOtherEntities = true, minimapPets = true;
@@ -246,6 +246,8 @@ public class Config {
     public static boolean showOpisTimes = false, showOpisLoaded = false;
     /** How often the server is asked for them while shown, in seconds. */
     public static int opisRefresh = 10;
+    /** MagLev Pylons and Thaumostatic Spires (only used when either is installed), and their full range outline. */
+    public static boolean showFlight = true, flightFullRange = true;
     /** Share the explored map with the ServerUtilities team (where the server has the mod). */
     public static boolean shareMapWithTeam = true;
     public static boolean useTextureColors = true;
@@ -568,6 +570,13 @@ public class Config {
             false,
             () -> minimapOpisLoaded,
             v -> minimapOpisLoaded = v);
+        bool(
+            c,
+            "layerFlight",
+            "MagLev Pylons and Thaumostatic Spires on the minimap.",
+            true,
+            () -> minimapFlight,
+            v -> minimapFlight = v);
         tab(null);
         group("ownGrid");
         parent("enabled");
@@ -1175,6 +1184,24 @@ public class Config {
             1,
             () -> opisRefresh,
             v -> opisRefresh = v);
+        group("flight");
+        bool(
+            c,
+            "flight",
+            "Show where GregTech MagLev Pylons let players fly and Automagy Thaumostatic Spires refuel thaumostatic "
+                + "harnesses, on the maps (if either is installed).",
+            true,
+            () -> showFlight,
+            v -> showFlight = v);
+        parent("flight");
+        bool(
+            c,
+            "flightFullRange",
+            "A thin outline of a MagLev Pylon's whole square where your height is out of its reach.",
+            true,
+            () -> flightFullRange,
+            v -> flightFullRange = v);
+        parent(null);
         tab(TAB_MAP_2D);
         group("data");
         parent(null);
@@ -1695,7 +1722,8 @@ public class Config {
             "drones",
             "guards",
             "opisTimes",
-            "opisLoaded");
+            "opisLoaded",
+            "flight");
         hideFromSettings(
             CATEGORY_ENTITIES,
             "showOtherPlayers",
@@ -1816,6 +1844,11 @@ public class Config {
 
     public static void toggleOpisLoaded() {
         showOpisLoaded = !showOpisLoaded;
+        save();
+    }
+
+    public static void toggleFlight() {
+        showFlight = !showFlight;
         save();
     }
 
@@ -1987,6 +2020,10 @@ public class Config {
         return minimap && minimapOwnLayers ? minimapOpisLoaded : showOpisLoaded;
     }
 
+    public static boolean flight(boolean minimap) {
+        return minimap && minimapOwnLayers ? minimapFlight : showFlight;
+    }
+
     public static boolean chargers(boolean minimap) {
         return minimap && minimapOwnLayers ? minimapChargers : showChargers;
     }
@@ -2044,6 +2081,7 @@ public class Config {
             minimapGuards = showGuards;
             minimapOpisTimes = showOpisTimes;
             minimapOpisLoaded = showOpisLoaded;
+            minimapFlight = showFlight;
             minimapOwnLayers = true;
         }
     }

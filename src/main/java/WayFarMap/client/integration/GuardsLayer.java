@@ -22,7 +22,6 @@ import java.util.concurrent.Executors;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.EmptyChunk;
@@ -36,6 +35,7 @@ import WayFarMap.client.Lang;
 import WayFarMap.client.gui.ui.Icons;
 import WayFarMap.client.map.MapManager;
 import WayFarMap.share.Chargers;
+import WayFarMap.share.GtMeta;
 import WayFarMap.share.MachinePoint;
 import WayFarMap.share.MobGuards;
 import WayFarMap.share.ShareNetwork;
@@ -51,14 +51,13 @@ import cpw.mods.fml.common.gameevent.TickEvent;
  * world's map folder. Everything about a torch is known to the client. A repellator's energy isn't: until a server
  * with this mod tells it ({@code share.MachineServer}), its circle is the range it has without power, grayed.
  */
-public final class GuardsLayer {
+public final class GuardsLayer implements MachineScanner.Layer {
 
     public static final GuardsLayer INSTANCE = new GuardsLayer();
 
     private static final int REPELLATOR_COLOR = 0x76FF03, TORCH_COLOR = 0xFF6D00, CHANDELIER_COLOR = 0xFFEA00;
     private static final int INACTIVE_COLOR = 0xFF3030;
     private static final int UNKNOWN_COLOR = 0xB0BEC5;
-    private static final int SCAN_TICKS = 20;
     private static final long SAVE_DELAY_MS = 5000;
     /** How long the server's word about a repellator stands over what the client sees. */
     private static final long SERVER_FRESH_MS = 5000;
@@ -103,7 +102,6 @@ public final class GuardsLayer {
     private File worldDirectory;
     private boolean inWorld, dirty;
     private long dirtySince;
-    private int tick;
 
     /** From the network thread. */
     public void receive(ShareNetwork.MachineList message) {
@@ -142,11 +140,6 @@ public final class GuardsLayer {
             while ((message = inbox.poll()) != null) {
                 apply(message);
             }
-            if (++tick >= SCAN_TICKS) {
-                tick = 0;
-                scan(mc, mc.theWorld.provider.dimensionId);
-                ask(mc);
-            }
         } catch (Throwable t) {
             Mods.fail(Mods.Addon.GUARDS, t);
         }
@@ -155,50 +148,57 @@ public final class GuardsLayer {
         }
     }
 
-    /** Adds the guards in loaded chunks and drops those whose loaded chunk no longer has them. */
-    private void scan(Minecraft mc, int dimension) {
-        World world = mc.theWorld;
-        int radius = Math.min(32, Math.max(12, mc.gameSettings.renderDistanceChunks) + 2);
-        int chunkX = MathHelper.floor_double(mc.thePlayer.posX) >> 4;
-        int chunkZ = MathHelper.floor_double(mc.thePlayer.posZ) >> 4;
-        Set<Long> present = new HashSet<>();
-        for (int cx = chunkX - radius; cx <= chunkX + radius; cx++) {
-            for (int cz = chunkZ - radius; cz <= chunkZ + radius; cz++) {
-                Chunk chunk = world.getChunkFromChunkCoords(cx, cz);
-                if (chunk instanceof EmptyChunk || !chunk.isChunkLoaded) {
-                    continue;
-                }
-                for (Object o : chunk.chunkTileEntityMap.values()) {
-                    TileEntity tile = (TileEntity) o;
-                    if (!tile.isInvalid() && see(dimension, tile)) {
-                        present.add(pack(tile.xCoord, tile.yCoord, tile.zCoord));
-                    }
-                }
-            }
-        }
-        Map<Long, Seen> points = seen.get(dimension);
-        if (points == null) {
-            return;
-        }
-        for (Iterator<Map.Entry<Long, Seen>> it = points.entrySet()
-            .iterator(); it.hasNext();) {
-            Map.Entry<Long, Seen> entry = it.next();
-            Seen point = entry.getValue();
-            if (present.contains(entry.getKey()) || !isLoaded(world, point.x, point.z)) {
-                continue;
-            }
-            TileEntity tile = world.getTileEntity(point.x, point.y, point.z);
-            if (kindAt(tile) != point.kind
-                && !(point.kind == MobGuards.KIND_REPELLATOR && Chargers.isGtMachinePending(tile))) {
-                it.remove();
-                markDirty();
-            }
+    // ---------------------------------------------------------------- MachineScanner
+
+    private final Set<Long> present = new HashSet<>();
+
+    @Override
+    public Mods.Addon addon() {
+        return Mods.Addon.GUARDS;
+    }
+
+    @Override
+    public boolean scans() {
+        return inWorld && Mods.isGuardsAvailable();
+    }
+
+    @Override
+    public void sweepStart() {
+        present.clear();
+    }
+
+    @Override
+    public void see(int dimension, TileEntity tile, Object gtMachine) {
+        if (record(dimension, tile, MobGuards.repellatorOf(gtMachine))) {
+            present.add(pack(tile.xCoord, tile.yCoord, tile.zCoord));
         }
     }
 
+    /** Drops the guards whose loaded chunk no longer has them, and asks the server about the repellators seen. */
+    @Override
+    public void sweepEnd(World world, int dimension) {
+        Map<Long, Seen> points = seen.get(dimension);
+        if (points != null) {
+            for (Iterator<Map.Entry<Long, Seen>> it = points.entrySet()
+                .iterator(); it.hasNext();) {
+                Map.Entry<Long, Seen> entry = it.next();
+                Seen point = entry.getValue();
+                if (present.contains(entry.getKey()) || !isLoaded(world, point.x, point.z)) {
+                    continue;
+                }
+                TileEntity tile = world.getTileEntity(point.x, point.y, point.z);
+                if (kindAt(tile) != point.kind
+                    && !(point.kind == MobGuards.KIND_REPELLATOR && GtMeta.isPending(tile))) {
+                    it.remove();
+                    markDirty();
+                }
+            }
+        }
+        ask(Minecraft.getMinecraft());
+    }
+
     /** Records the tile entity if it is a guard; false if it isn't one. */
-    private boolean see(int dimension, TileEntity tile) {
-        Object repellator = MobGuards.repellator(tile);
+    private boolean record(int dimension, TileEntity tile, Object repellator) {
         int kind = repellator != null ? MobGuards.KIND_REPELLATOR : MobGuards.torchKind(tile);
         if (kind < 0) {
             return false;
