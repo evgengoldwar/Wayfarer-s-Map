@@ -228,7 +228,13 @@ public final class TeamMapClient {
             return;
         }
         MapRegion biomeRegion = layer < 0 && biomeMap != null ? biomeMap.getLoadedRegion(rx, rz) : null;
-        ChunkRecord record = toRecord(region, biomeRegion, layer, chunkX, chunkZ);
+        ChunkRecord record = toRecord(
+            region,
+            biomeRegion,
+            biomeRegion != null ? biomeMap.biomePalette() : null,
+            layer,
+            chunkX,
+            chunkZ);
         if (record == null) {
             return;
         }
@@ -247,7 +253,8 @@ public final class TeamMapClient {
     }
 
     /** The chunk of a region as a record (time not set), or null if nothing of it is explored. */
-    static ChunkRecord toRecord(MapRegion region, MapRegion biomeRegion, int layer, int chunkX, int chunkZ) {
+    static ChunkRecord toRecord(MapRegion region, MapRegion biomeRegion, BiomePalette palette, int layer, int chunkX,
+        int chunkZ) {
         ChunkRecord record = new ChunkRecord();
         record.chunkX = chunkX;
         record.chunkZ = chunkZ;
@@ -265,7 +272,10 @@ public final class TeamMapClient {
                     record.extra[i] = (byte) region.getExtra(baseX + lx, baseZ + lz);
                 }
                 if (biomeRegion != null) {
-                    record.biomes[i] = (byte) biomeRegion.getExtra(baseX + lx, baseZ + lz);
+                    // Sent as the biome's id + 1, which teammates read whatever their palettes; a biome with an id
+                    // above 254 can't be told that way, and goes as unknown.
+                    int id = palette == null ? -1 : palette.biomeId(biomeRegion.getExtra(baseX + lx, baseZ + lz));
+                    record.biomes[i] = (byte) (id >= 0 && id < 255 ? id + 1 : 0);
                 }
             }
         }
@@ -389,6 +399,7 @@ public final class TeamMapClient {
                         ChunkRecord record = toRecord(
                             region,
                             biomeRegion,
+                            biomeRegion != null ? BiomePalette.of(biomeDir) : null,
                             layer,
                             rx * MapRegion.CHUNKS + cx,
                             rz * MapRegion.CHUNKS + cz);

@@ -97,6 +97,11 @@ public class MapDimension {
     }
 
     /** Folder of the region files. */
+    /** Which biome each value of this biome map's extra bytes stands for (see {@link BiomePalette}). */
+    public BiomePalette biomePalette() {
+        return BiomePalette.of(directory);
+    }
+
     public File getDirectory() {
         return directory;
     }

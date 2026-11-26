@@ -18,6 +18,9 @@
 
 # 0.0.26
 
+## Biomes
+- [fix] Biome view: biomes with ids above 254 (packs that extend biome ids, like EndlessIDs) are named under the cursor and found by the biome search; places mapped before show them once mapped again
+
 ## Caves
 - [new] Solid rock in caves: settings → 2D map → Solid rock in caves. Black as before, or a cut at the layer's top (in the blocks' colors or in gray), so machines and other blocks standing on the floor of a base are no longer holes in cave mode
 

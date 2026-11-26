@@ -163,7 +163,9 @@ public class MapManager implements IResourceManagerReloadListener {
     /** Biome of the column from the explored biome map, or null if unknown. */
     public BiomeGenBase getBiome(int x, int z) {
         int id = biomes == null ? 0 : biomes.peekExtra(x, z);
-        return id == 0 ? null : BiomeGenBase.getBiome(id - 1);
+        return id == 0 ? null
+            : biomes.biomePalette()
+                .biome(id);
     }
 
     /** Cave layer being shown (blocks {@code layer * 16} to {@code layer * 16 + 15}), or -1 for the surface. */
@@ -546,7 +548,9 @@ public class MapManager implements IResourceManagerReloadListener {
                 id = region.getExtra(x & (MapRegion.SIZE - 1), z & (MapRegion.SIZE - 1));
             }
         }
-        return id == 0 ? null : BiomeGenBase.getBiome(id - 1);
+        return id == 0 ? null
+            : map.biomePalette()
+                .biome(id);
     }
 
     /** Height to stand on in the dimension shown on the world map, from its explored surface; 0 if unknown. */
@@ -622,9 +626,13 @@ public class MapManager implements IResourceManagerReloadListener {
                     }
                 }
                 if (biomeRegion != null) {
-                    int biomeId = record.biomes[i] & 0xFF;
-                    BiomeGenBase biome = biomeId == 0 ? null : BiomeGenBase.getBiome(biomeId - 1);
-                    if (biome != null) {
+                    // Teammates send the biome's id + 1 (0 for unknown); stored as this map's palette value.
+                    int sentId = (record.biomes[i] & 0xFF) - 1;
+                    BiomeGenBase[] all = BiomeGenBase.getBiomeGenArray();
+                    BiomeGenBase biome = sentId >= 0 && sentId < all.length ? all[sentId] : null;
+                    int biomeId = biomeMap.biomePalette()
+                        .valueOf(biome);
+                    if (biome != null && biomeId != 0) {
                         // Same light relief as ChunkScanner, from the heights within the chunk.
                         int height = record.extra[i] & 0xFF;
                         int north = lz > 0 ? record.extra[i - 16] & 0xFF : 0;

@@ -29,8 +29,10 @@ public final class BiomeHighlight {
 
     private static String query = "";
     private static int queryVersion;
-    /** Which biome ids match the query. */
-    private static final boolean[] matches = new boolean[256];
+    /** Whether each stored biome value matches the query (null = not worked out yet), for {@link #palette}. */
+    private static final Boolean[] matches = new Boolean[256];
+    /** The palette of the biome map being highlighted: stored values stand for its biomes. */
+    private static BiomePalette palette;
 
     private static final class Overlay {
 
@@ -62,14 +64,20 @@ public final class BiomeHighlight {
         }
         query = q;
         queryVersion++;
-        BiomeGenBase[] biomes = BiomeGenBase.getBiomeGenArray();
-        for (int id = 0; id < matches.length; id++) {
-            BiomeGenBase biome = id < biomes.length ? biomes[id] : null;
-            matches[id] = !q.isEmpty() && biome != null
-                && biome.biomeName != null
+        java.util.Arrays.fill(matches, null);
+    }
+
+    /** Whether the biome a stored value stands for matches the query; worked out once per value. */
+    private static boolean matches(int value) {
+        Boolean match = matches[value];
+        if (match == null) {
+            BiomeGenBase biome = palette == null ? null : palette.biome(value);
+            match = biome != null && biome.biomeName != null
                 && biome.biomeName.toLowerCase(Locale.ROOT)
-                    .contains(q);
+                    .contains(query);
+            matches[value] = match;
         }
+        return match;
     }
 
     /** Draws the highlight over the biome map in the given rectangle (same geometry as MapDrawer#drawMap). */
@@ -77,6 +85,13 @@ public final class BiomeHighlight {
         int width, int height) {
         if (!isActive() || biomeMap == null) {
             return;
+        }
+        BiomePalette mapPalette = biomeMap.biomePalette();
+        if (mapPalette != palette) {
+            // Another dimension's map: its values may stand for other biomes.
+            palette = mapPalette;
+            java.util.Arrays.fill(matches, null);
+            queryVersion++;
         }
         double left = centerX - width / 2.0 / scale;
         double top = centerZ - height / 2.0 / scale;
@@ -241,6 +256,6 @@ public final class BiomeHighlight {
         if (id == 0) {
             return (region.getPixel(x, z) >>> 24) == 0 ? 0 : 1;
         }
-        return matches[(id - 1) & 0xFF] ? 2 : 1;
+        return matches(id & 0xFF) ? 2 : 1;
     }
 }

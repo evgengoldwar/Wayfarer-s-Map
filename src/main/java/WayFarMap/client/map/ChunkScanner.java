@@ -127,7 +127,9 @@ public final class ChunkScanner {
                 if (biomeRegion != null) {
                     BiomeGenBase biome = chunk.getBiomeGenForWorldCoords(lx, lz, world.getWorldChunkManager());
                     int biomeArgb = biome == null ? 0 : 0xFF000000 | BlockColors.shade(biomeColor(biome), biomeRelief);
-                    int biomeId = biome == null || biome.biomeID >= 255 ? 0 : biome.biomeID + 1;
+                    // Biomes with ids above 254 (EndlessIDs) get a value of their own from the map's palette.
+                    int biomeId = biomeMap.biomePalette()
+                        .valueOf(biome);
                     biomeRegion.setPixel(baseX + lx, baseZ + lz, biomeArgb, biomeId);
                 }
             }
