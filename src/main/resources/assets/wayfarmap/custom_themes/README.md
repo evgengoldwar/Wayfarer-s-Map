@@ -1,201 +1,203 @@
-<!-- wayfarmap:auto — этот файл пишет мод и обновляет его вместе с модом. Удалите эту строку, чтобы мод его больше не трогал. -->
+<!-- wayfarmap:auto — the mod writes this file and updates it with the mod. Delete this line to make the mod leave it alone. -->
 
-# Свои темы Wayfarer's Map
+# Wayfarer's Map custom themes
 
-В этой папке (`.minecraft/wayfarmap/CustomThemes`) лежат ваши темы оформления. Тема меняет **цвета** всего
-интерфейса мода и, по желанию, **картинки** его частей: окон, кнопок, полей, переключателей, ползунков, полос
-прокрутки, подсказок, рамки миникарты и любых иконок.
+This folder (`.minecraft/wayfarmap/CustomThemes`) holds your own themes. A theme changes the **colors** of the whole
+mod interface and, if you want, the **pictures** of its parts: windows, buttons, text fields, switches, sliders,
+scrollbars, tooltips, the minimap frame and any icon.
 
-Готовый пример — папка `example` (в настройках — «Медь (пример)»). В её `theme.json` перечислены **все** ключи,
-которые понимает мод, с комментариями.
+A ready-made example is the `example` folder ("Copper (example)" in the settings). Its `theme.json` lists **every**
+key the mod understands, with comments.
 
-## Как сделать свою тему
+## Making your own theme
 
-1. Скопируйте папку `example` и переименуйте её, например в `mytheme`. Имя папки — это имя темы в файле
-   настроек: латиница, цифры, `-` и `_`.
-2. Поменяйте в `mytheme/theme.json` название (`"name"`), цвета и картинки. Атлас картинок рисуйте в
+1. Copy the `example` folder and rename it, for example to `mytheme`. The folder name is the theme's name in the
+   settings file: use Latin letters, digits, `-` and `_`.
+2. Change the name (`"name"`), the colors and the pictures in `mytheme/theme.json`. Draw the texture atlas in
    `mytheme/atlas.png`.
-3. Выберите тему в игре: **Настройки → Карта → Тема** (стрелки `<` `>`).
+3. Pick the theme in game: **Settings → World map → Theme** (the `<` `>` arrows).
 
-Тема перечитывается сама:
+The theme is read again on its own:
 
-* когда вы **сохраняете** `theme.json` или любой `.png` в папке темы, пока открыто окно мода (проверка раз в
-  секунду);
-* когда тему **выбирают** в настройках (файл и атлас читаются заново);
-* по **F3+T** (перезагрузка ресурсов) — тогда же перечитываются темы из ресурспаков.
+* when you **save** `theme.json` or any `.png` in the theme's folder while a screen of the mod is open (checked once
+  a second);
+* when the theme is **chosen** in the settings (the file and the atlas are read again);
+* on **F3+T** (resource reload), which also reloads themes from resource packs.
 
-Ошибки (опечатка в JSON, нет файла атласа, картинка выходит за атлас) пишутся в `errors.txt` в этой папке и в лог
-игры. Если ошибок нет, файла нет.
+Problems (a typo in the JSON, a missing atlas file, a sprite reaching out of the atlas) are written to `errors.txt`
+in this folder and to the game log. When there are none, there is no such file.
 
-Ещё можно положить тему одним файлом: `CustomThemes/mytheme.json`. Атлас тогда ищется в самой папке `CustomThemes`.
-Папки, имя которых начинается с `_` или `.`, темами не считаются (например, `_icons`).
+A theme can also be a single file: `CustomThemes/mytheme.json`. Its atlas is then looked for in the `CustomThemes`
+folder itself. Folders whose name starts with `_` or `.` are not themes (for example `_icons`).
 
 ## theme.json
 
-Это JSON, в котором разрешены комментарии `//` и `/* */`. Запятая после последнего элемента не допускается. Любой
-ключ можно не писать: тогда значение берётся из темы `"extends"`.
+This is JSON with `//` and `/* */` comments allowed. A comma after the last element is not allowed. Any key can be
+left out: its value then comes from the `"extends"` theme.
 
-| Ключ | Что делает |
+| Key | What it does |
 |---|---|
-| `"name"` | Название в настройках: `"Моя тема"` или по языкам `{ "en_US": "...", "ru_RU": "...", "uk_UA": "...", "zh_CN": "..." }`. Без него показывается имя папки. |
-| `"extends"` | Тема, из которой берётся всё, что не указано: `graphite`, `forest`, `nether`, `ocean`, `end`, `desert`, `snow`, `vanilla` или имя другой своей темы. По умолчанию `graphite`. |
-| `"light"` | `true`: светлая тема (тёмный текст на светлом фоне). Влияет на цвета, которые вычисляются сами. |
-| `"bevel"` | `true`: объёмные края у панелей и кнопок, как в ванильном Minecraft (у частей без картинок). |
-| `"titleShadow"` | Тень у заголовков окон. По умолчанию есть на тёмных темах, нет на светлых. |
-| `"decor"` | Полоса под заголовком окна: `{ "run": 4, "flows": false, "colors": ["#FF..", ...] }`. Цвета идут по очереди, каждый длиной `run` пикселей; `flows: true` — полоса бежит, как лава. `null` — без полосы. |
-| `"colors"` | Цвета, см. ниже. |
-| `"atlas"` | Файл атласа рядом с `theme.json`, например `"atlas.png"`. Без него тема берёт картинки темы `extends` (если они у неё есть). |
-| `"sprites"` | Картинки частей интерфейса из атласа, см. ниже. |
+| `"name"` | Name in the settings: `"My theme"` or per language `{ "en_US": "...", "ru_RU": "...", "uk_UA": "...", "zh_CN": "..." }`. Without it the folder name is shown. |
+| `"extends"` | The theme everything not given is taken from: `graphite`, `forest`, `nether`, `ocean`, `end`, `desert`, `snow`, `vanilla` or the name of another theme of yours. Default `graphite`. |
+| `"light"` | `true`: a light theme (dark text on a light background). Affects the colors that are worked out automatically. |
+| `"bevel"` | `true`: raised edges on panels and buttons, like vanilla Minecraft (for parts without pictures). |
+| `"titleShadow"` | Shadow under window titles. By default on for dark themes, off for light ones. |
+| `"decor"` | The strip under a window's header: `{ "run": 4, "flows": false, "colors": ["#FF..", ...] }`. The colors take turns, each `run` pixels long; `flows: true` makes the strip move like lava. `null` means no strip. |
+| `"colors"` | Colors, see below. |
+| `"atlas"` | The atlas file next to `theme.json`, for example `"atlas.png"`. Without it the theme uses the pictures of its `extends` theme (if that one has any). |
+| `"sprites"` | Pictures of interface parts cut from the atlas, see below. |
 
-### Цвета (`"colors"`)
+### Colors (`"colors"`)
 
-Формат: `"#RRGGBB"` (непрозрачный), `"#AARRGGBB"` (`AA` — непрозрачность от `00` до `FF`) или `"#RGB"`.
+Format: `"#RRGGBB"` (opaque), `"#AARRGGBB"` (`AA` is the opacity, `00` to `FF`) or `"#RGB"`.
 
-**Основные.** Если в файле задан хоть один основной цвет (или `light`), производные цвета вычисляются из них
-заново, кроме тех, что тоже заданы в файле.
+**Base colors.** If the file sets at least one base color (or `light`), the derived colors are worked out again from
+them, except those the file sets too.
 
-| Цвет | Где |
+| Color | Where |
 |---|---|
-| `screenDim` | Затемнение всего, что за окном мода |
-| `panel` | Фон окна |
-| `panelAlt` | Второй фон окна: полосы, заголовки |
-| `border` | Рамки |
-| `control` | Кнопки и элементы управления |
-| `controlHover` | Элемент под мышью |
-| `controlDisabled` | Выключенный элемент |
-| `accent` | Акцент: выбранное, активное, линии |
-| `accentDim` | Приглушённый акцент: фон включённой кнопки |
-| `danger` | Опасное действие (удалить) |
-| `success` | Успех |
-| `text` | Основной текст |
-| `textMuted` | Второстепенный текст |
-| `textDisabled` | Текст выключенного |
-| `labelBg` | Фон подписей на карте |
+| `screenDim` | Shade over everything behind a mod screen |
+| `panel` | Window background |
+| `panelAlt` | Second window background: bands, headers |
+| `border` | Borders |
+| `control` | Buttons and controls |
+| `controlHover` | A control under the mouse |
+| `controlDisabled` | A disabled control |
+| `accent` | Accent: selected, active, lines |
+| `accentDim` | Dimmed accent: background of a button that is on |
+| `danger` | Destructive action (delete) |
+| `success` | Success |
+| `text` | Main text |
+| `textMuted` | Secondary text |
+| `textDisabled` | Text of something disabled |
+| `labelBg` | Background of labels on the map |
 
-**Производные** (без них вычисляются из основных): `header` (фон заголовка окна), `field` (поле ввода),
-`fieldText`, `buttonText`, `textBright`, `textSoft`, `accentSoft`, `deep` (списки, превью), `card`, `cardHover`,
-`cardHeader`, `cardSelected`, `cardSelectedHover`, `sidebar`, `section`, `chosen`, `dangerDim`, `dangerDimHover`,
-`dangerStrong`, `dangerStrongHover`, `rowHover`, `tooltipText`. Что где — в комментариях `example/theme.json`.
+**Derived colors** (worked out from the base ones when not given): `header` (window header background), `field`
+(text field), `fieldText`, `buttonText`, `textBright`, `textSoft`, `accentSoft`, `deep` (lists, previews), `card`,
+`cardHover`, `cardHeader`, `cardSelected`, `cardSelectedHover`, `sidebar`, `section`, `chosen`, `dangerDim`,
+`dangerDimHover`, `dangerStrong`, `dangerStrongHover`, `rowHover`, `tooltipText`. What each one is for is in the
+comments of `example/theme.json`.
 
-## Атлас и картинки (`"sprites"`)
+## Atlas and pictures (`"sprites"`)
 
-Атлас — один PNG любого размера с прозрачностью. В `"sprites"` каждой части интерфейса сопоставляется
-прямоугольник атласа:
+The atlas is a single PNG of any size, with transparency. `"sprites"` maps each interface part to a rectangle of
+the atlas:
 
 ```json
 "button": { "uv": [0, 32, 20, 16], "border": 4 }
 ```
 
-Часть, у которой нет картинки (или стоит `null`), рисуется цветами темы. Поэтому можно перерисовать только кнопки,
-а всё остальное оставить цветным.
+A part without a picture (or set to `null`) is drawn in the theme's colors. So you can redraw only the buttons and
+leave everything else in colors.
 
-Картинка рисуется по схеме **9-slice**: углы (размером `border`) — как есть, края растягиваются вдоль, середина — в
-обе стороны. Так кнопка любой ширины выглядит ровно.
+Pictures are drawn as a **9-slice**: the corners (`border` in size) stay as they are, the edges stretch along, the
+middle stretches both ways. That way a button of any width looks right.
 
 ```
  border
  ┌──┬────────┬──┐
- │уг│  край  │уг│
+ │co│  edge  │co│
  ├──┼────────┼──┤
- │кр│середина│кр│   ← растягивается (или повторяется при "tile": true)
+ │ed│ middle │ed│   ← stretched (or repeated with "tile": true)
  ├──┼────────┼──┤
- │уг│  край  │уг│
+ │co│  edge  │co│
  └──┴────────┴──┘
 ```
 
-| Ключ картинки | По умолчанию | Что делает |
+| Sprite key | Default | What it does |
 |---|---|---|
-| `"uv": [x, y, w, h]` | обязательно | Прямоугольник в атласе (в пикселях атласа). Можно и отдельно: `"x"`, `"y"`, `"w"`, `"h"`. |
-| `"border"` | `0` | Нерастягиваемые края: одно число, `[гориз, верт]` или `[лево, верх, право, низ]`. |
-| `"scale"` | `1` | Пикселей интерфейса на пиксель атласа. `0.5` — атлас вдвое детальнее (HD). |
-| `"tile"` | `false` | Края и середину повторять, а не растягивать (узоры, кирпичи). |
-| `"center"` | `true` | Рисовать середину. `false` — только рамка. |
-| `"tint"` | `"#FFFFFFFF"` | Умножить картинку на цвет; первая пара цифр — прозрачность. |
-| `"recolor"` | `true` у `icon.*`, иначе `false` | Красить картинку цветом детали. Белая иконка тогда принимает цвет темы и состояния (под мышью, выключено). |
-| `"frames"`, `"frameTime"` | `1`, `100` | Анимация: кадры лежат в атласе друг под другом (каждый высотой `h`), `frameTime` — мс на кадр. |
-| `"width"`, `"height"` | — | Свой размер у тонких частей: ширина полосы прокрутки и ручки ползунка, высота дорожки ползунка и полосы `decor`, размер иконки. |
+| `"uv": [x, y, w, h]` | required | Rectangle in the atlas (atlas pixels). Can also be given as `"x"`, `"y"`, `"w"`, `"h"`. |
+| `"border"` | `0` | Edges that don't stretch: one number, `[horizontal, vertical]` or `[left, top, right, bottom]`. |
+| `"scale"` | `1` | Interface pixels per atlas pixel. `0.5` makes an atlas twice as detailed (HD). |
+| `"tile"` | `false` | Repeat the edges and the middle instead of stretching them (patterns, bricks). |
+| `"center"` | `true` | Draw the middle. `false` draws the frame only. |
+| `"tint"` | `"#FFFFFFFF"` | Multiply the picture by a color; the first pair of digits is the opacity. |
+| `"recolor"` | `true` for `icon.*`, else `false` | Paint the picture in the part's own color. A white icon then takes the theme's color and the state (under the mouse, disabled). |
+| `"frames"`, `"frameTime"` | `1`, `100` | Animation: frames lie under each other in the atlas (each `h` high), `frameTime` is milliseconds per frame. |
+| `"width"`, `"height"` | — | Own size for thin parts: width of the scrollbar and the slider knob, height of the slider track and the `decor` strip, size of an icon. |
 
-Состояния ищутся по порядку, от точного к общему: `button.active.hover` → `button.active` → `button`. Поэтому
-достаточно нарисовать только `button`, а остальные состояния — по желанию. Состояние `.hover` плавно проявляется
-поверх обычного, когда на элемент наводят мышь.
+States are looked up from the most exact to the most general: `button.active.hover` → `button.active` → `button`.
+So drawing only `button` is enough, and the other states are optional. The `.hover` state fades in over the normal
+picture when the mouse is over the control.
 
-### Все части интерфейса
+### All interface parts
 
-Размеры указаны в пикселях интерфейса мода, как часть обычно рисуется (кнопки и окна бывают разной ширины).
+Sizes are in interface pixels, as the part is usually drawn (buttons and windows come in different widths).
 
-**Окна**
+**Windows**
 
-| Картинка | Что это | Размер |
+| Picture | What it is | Size |
 |---|---|---|
-| `screen` | Затемнение за окном, на весь экран (удобно с `"tile": true`) | весь экран |
-| `panel` | Фон окна | окно |
-| `header` | Заголовок окна | ширина окна × 30 |
-| `header.accent` | Линия под названием окна | × 1 |
-| `decor` | Полоса под заголовком; повторяется по ширине (бежит, если `decor.flows`) | × 2 (`height`) |
-| `pill` | Плашка справа в заголовке (счётчик, размер) | × 12 |
-| `tooltip` | Подсказка, в том числе подсказки Minecraft в окнах мода | по тексту |
-| `dropdown` | Открытый список под кнопкой | по списку |
-| `toast` | Всплывающее сообщение внизу окна | по тексту |
-| `label` | Подписи на карте | по тексту |
-| `drag` | Путевая точка, которую тащат мышью | — |
+| `screen` | Shade behind a window, over the whole screen (handy with `"tile": true`) | whole screen |
+| `panel` | Window background | window |
+| `header` | Window header | window width × 30 |
+| `header.accent` | Line under the window's title | × 1 |
+| `decor` | Strip under the header; repeated along its width (moves if `decor.flows`) | × 2 (`height`) |
+| `pill` | Small box on the right of the header (a count, a size) | × 12 |
+| `tooltip` | Tooltip, including Minecraft's tooltips in mod screens | fits the text |
+| `dropdown` | An open list under its button | fits the list |
+| `toast` | A pop-up message at the bottom of a window | fits the text |
+| `label` | Labels on the map | fits the text |
+| `drag` | A waypoint being dragged with the mouse | — |
 
-**Кнопки:** `button`, `button.hover`, `button.active` (включённая, выбранная вкладка), `button.active.hover`,
-`button.disabled`, `button.danger` (опасное действие), `button.danger.hover`. Обычно 16–20 px высотой.
+**Buttons:** `button`, `button.hover`, `button.active` (on, the selected tab), `button.active.hover`,
+`button.disabled`, `button.danger` (destructive action), `button.danger.hover`. Usually 16–20 px high.
 
-**Кнопки-иконки** (панели карты, крестик закрытия): `icon_button` и те же состояния (`.hover`, `.active`,
-`.active.hover`, `.disabled`). Без них берутся картинки `button.*`. Размер 20 × 16.
+**Icon buttons** (map toolbars, the close cross): `icon_button` and the same states (`.hover`, `.active`,
+`.active.hover`, `.disabled`). Without them the `button.*` pictures are used. Size 20 × 16.
 
-**Поля ввода:** `field`, `field.focused` (в нём печатают), `value` и `value.hover` (число слева от ползунка в
-настройках; без них — `field`).
+**Text fields:** `field`, `field.focused` (being typed in), `value` and `value.hover` (the number left of a slider in
+the settings; `field` when not given).
 
-**Настройки**
+**Settings**
 
-| Картинка | Что это | Размер |
+| Picture | What it is | Size |
 |---|---|---|
-| `switch.off`, `switch.off.hover` | Переключатель выключен (строка под мышью) | 24 × 12 |
-| `switch.on`, `switch.on.hover` | Переключатель включён (плавно проявляется) | 24 × 12 |
-| `switch.knob` | Ручка переключателя | 8 × 8 |
-| `segment`, `segment.hover`, `segment.selected`, `segment.selected.hover` | Значения списка, когда видны все сразу | × 16 |
-| `selector`, `selector.hover` | Список с одним значением и стрелками `<` `>` (без них — `button`) | 104 × 16 |
-| `slider.track` | Дорожка ползунка | × 3 (`height`) |
-| `slider.fill`, `slider.fill.hover` | Заполненная часть дорожки | × 3 (`height`) |
-| `slider.knob`, `slider.knob.hover` | Ручка ползунка | 6 (`width`) × 12 |
+| `switch.off`, `switch.off.hover` | Switch that is off (row under the mouse) | 24 × 12 |
+| `switch.on`, `switch.on.hover` | Switch that is on (fades in) | 24 × 12 |
+| `switch.knob` | Switch knob | 8 × 8 |
+| `segment`, `segment.hover`, `segment.selected`, `segment.selected.hover` | Values of a list when all are shown at once | × 16 |
+| `selector`, `selector.hover` | A list showing one value with `<` `>` arrows (`button` when not given) | 104 × 16 |
+| `slider.track` | Slider track | × 3 (`height`) |
+| `slider.fill`, `slider.fill.hover` | Filled part of the track | × 3 (`height`) |
+| `slider.knob`, `slider.knob.hover` | Slider knob | 6 (`width`) × 12 |
 
-**Полоса прокрутки:** `scrollbar.track`, `scrollbar.thumb`, `scrollbar.thumb.hover`. Обычно 2 px шириной; шире —
-через `"width"`.
+**Scrollbar:** `scrollbar.track`, `scrollbar.thumb`, `scrollbar.thumb.hover`. Usually 2 px wide; wider with
+`"width"`.
 
-**Миникарта:** `minimap.frame` (рамка квадратной миникарты; удобно с `"center": false`) и
-`minimap.frame.round` (картинка кольца для круглой). Рисуются, когда рамка включена в настройках миникарты;
-прозрачность берётся оттуда же. Толщина — настройка «толщина рамки» или `"width"`.
+**Minimap:** `minimap.frame` (frame of the square minimap; handy with `"center": false`) and `minimap.frame.round` (a
+ring picture for the round one). Drawn when the frame is turned on in the minimap settings; the opacity comes from
+there too. The thickness is the "frame width" setting or `"width"`.
 
-**Иконки:** `icon.<имя>`, например `icon.close`, `icon.settings`, `icon.waypoints`. В папке `_icons` мод при
-каждом запуске пишет:
+**Icons:** `icon.<name>`, for example `icon.close`, `icon.settings`, `icon.waypoints`. Each start the mod writes to
+the `_icons` folder:
 
-* `icons.png` — все иконки мода белым, точка = пиксель;
-* `icons.json` — готовые строки `"icon.<имя>": { "uv": [...] }` для всех иконок.
+* `icons.png`: every icon of the mod in white, one dot per pixel;
+* `icons.json`: ready-made `"icon.<name>": { "uv": [...] }` lines for all icons.
 
-Чтобы перерисовать иконки, вставьте `icons.png` в свой атлас (например, ниже остального), перерисуйте нужные и
-скопируйте строки из `icons.json` в `"sprites"`, прибавив к `y` сдвиг. Иконка рисуется в своём прежнем размере;
-другой размер задаётся через `"width"`/`"height"`. Белые иконки с `"recolor": true` (по умолчанию) красятся под
-тему; цветные рисуйте с `"recolor": false`.
+To redraw icons, paste `icons.png` into your atlas (for example below everything else), redraw the ones you want and
+copy the lines from `icons.json` into `"sprites"`, adding your offset to `y`. An icon is drawn at its original size;
+another size is set with `"width"`/`"height"`. White icons with `"recolor": true` (the default) are painted to match
+the theme; draw colored icons with `"recolor": false`.
 
-## Темы в ресурспаке
+## Themes in a resource pack
 
-Ресурспак может добавлять темы и менять встроенные:
+A resource pack can add themes and change the built-in ones:
 
 ```
-assets/wayfarmap/themes/themes.json         { "themes": ["mytheme"] }   — список тем пака
-assets/wayfarmap/themes/mytheme/theme.json  — тема, тот же формат
-assets/wayfarmap/themes/mytheme/atlas.png   — её атлас
+assets/wayfarmap/themes/themes.json         { "themes": ["mytheme"] }   — the pack's list of themes
+assets/wayfarmap/themes/mytheme/theme.json  — the theme, same format
+assets/wayfarmap/themes/mytheme/atlas.png   — its atlas
 ```
 
-Встроенную тему пак меняет без списка: `assets/wayfarmap/themes/nether/theme.json`. В `"atlas"` можно указать и
-полный путь ресурса: `"wayfarmap:textures/gui/my_atlas.png"`. Темы паков перечитываются по F3+T и при смене паков.
+A pack changes a built-in theme without listing it: `assets/wayfarmap/themes/nether/theme.json`. `"atlas"` can also
+be a full resource path: `"wayfarmap:textures/gui/my_atlas.png"`. Pack themes are reloaded on F3+T and when packs
+change.
 
-Порядок: встроенные темы → темы ресурспаков → темы этой папки. Тема с тем же именем заменяет прежнюю; её
-`"extends"` по умолчанию — та тема, которую она заменяет.
+Order: built-in themes → resource pack themes → themes of this folder. A theme with the same name replaces the earlier
+one; its `"extends"` defaults to the theme it replaces.
 
-## Выбранная тема
+## The chosen theme
 
-Выбранная тема хранится в `config/wayfarmap.cfg` по имени (`themeName`). Если тему удалить или выключить её
-ресурспак, мод временно показывает graphite и вернётся к ней, когда она снова появится.
+The chosen theme is stored by name in `config/wayfarmap.cfg` (`themeName`). If the theme is deleted or its resource
+pack is turned off, the mod shows graphite for the time being and goes back to it once it is there again.
