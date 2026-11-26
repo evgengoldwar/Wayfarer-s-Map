@@ -1051,9 +1051,8 @@ public final class MapDrawer {
         double pixel = bounds[4];
         int outlineWidth = Math.max(0, Config.mobFrameWidth);
         int outlineColor = withAlpha(color, alpha * Config.mobFrameOpacity / 100f);
-        if (entity == null
-            || !MobIcons.draw(entity, cx, cy, shown, alpha, pixel, outlineWidth, outlineColor)
-                && !EntityIcons.drawFace(entity, cx, cy, shown, alpha, pixel, outlineWidth, outlineColor)) {
+        if (entity == null || !MobIcons.draw(entity, cx, cy, shown, alpha, pixel, outlineWidth, outlineColor)
+            && !EntityIcons.drawFace(entity, cx, cy, shown, alpha, pixel, outlineWidth, outlineColor)) {
             drawDot(cx, cy, 1f, withAlpha(color, alpha), alpha);
         }
         GL11.glColor4f(1f, 1f, 1f, 1f);
