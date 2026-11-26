@@ -52,8 +52,7 @@ public final class MobMapIcons {
         if (".".equals(mod) || "..".equals(mod)) {
             return Optional.empty();
         }
-        String path = ("textures/mob_icons/" + mod + "/" + name + ".png")
-            .toLowerCase(Locale.ROOT);
+        String path = ("textures/mob_icons/" + mod + "/" + name + ".png").toLowerCase(Locale.ROOT);
         ResourceLocation png = new ResourceLocation("wayfarmap", path);
         try (InputStream in = Minecraft.getMinecraft()
             .getResourceManager()
